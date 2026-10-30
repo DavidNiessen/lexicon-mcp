@@ -65,6 +65,51 @@ for (const [name, field] of Object.entries(
 )) {
   if (readOnly.has(name)) continue;
   let schema = fromSchema(field);
+  if (name === "cuepoints")
+    schema = schema.superRefine((value, ctx) => {
+      const positions = new Set<number>();
+      for (const [index, cue] of (
+        value as Array<Record<string, unknown>>
+      ).entries()) {
+        const position = cue.position as number;
+        if (position < 0 || positions.has(position))
+          ctx.addIssue({
+            code: "custom",
+            path: [index, "position"],
+            message: "Cue positions must be nonnegative and unique per track",
+          });
+        positions.add(position);
+        if ((cue.startTime as number) < 0)
+          ctx.addIssue({
+            code: "custom",
+            path: [index, "startTime"],
+            message: "Cue time must be nonnegative",
+          });
+        if (
+          cue.type === "5" &&
+          (typeof cue.endTime !== "number" ||
+            cue.endTime <= (cue.startTime as number))
+        )
+          ctx.addIssue({
+            code: "custom",
+            path: [index, "endTime"],
+            message: "Loops require an end time after the start time",
+          });
+      }
+    });
+  if (name === "tempomarkers")
+    schema = schema.superRefine((value, ctx) => {
+      for (const [index, marker] of (
+        value as Array<Record<string, unknown>>
+      ).entries()) {
+        if ((marker.bpm as number) <= 0)
+          ctx.addIssue({
+            code: "custom",
+            path: [index, "bpm"],
+            message: "Tempo marker BPM must be positive",
+          });
+      }
+    });
   if (field.type === "integer" || field.type === "number")
     schema = z.union([schema, z.string().regex(/^[+-]\d+(?:\.\d+)?$/)]);
   else if (field.type === "string" || field.$ref) schema = schema.nullable();

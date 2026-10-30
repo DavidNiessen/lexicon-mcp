@@ -26,6 +26,8 @@ interface Failure {
   status: number;
   errorCode: number;
   message: string;
+  method?: string;
+  path?: string;
 }
 
 export async function createSimulator(
@@ -227,8 +229,15 @@ export async function createSimulator(
         request.method === "GET" ? queryInput(url) : await bodyInput(request);
       const path = url.pathname.replace(/^\/v1/, "");
       requests.push({ method: request.method ?? "GET", path, input });
-      const failure = failures.shift();
-      if (failure) throw failure;
+      const failure = failures[0];
+      if (
+        failure &&
+        (!failure.method || failure.method === request.method) &&
+        (!failure.path || failure.path === path)
+      ) {
+        failures.shift();
+        throw failure;
+      }
       const data = dispatch(request.method ?? "GET", path, input);
       response.writeHead(200, { "content-type": "application/json" });
       response.end(JSON.stringify({ data }));

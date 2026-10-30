@@ -62,7 +62,7 @@ export const workflowRegistry = [
   {
     name: "lexicon_playlist_workflow",
     description:
-      "Compare playlists or propose copy, merge, deduplicate, and explicit reordering operations. Returns a reviewable proposal, never mutates directly.",
+      "Compare playlists or propose merge, deduplication, and explicit reordering. Copy uses two reviewed plans: create an empty normal playlist, then populate its returned ID with the provided follow-up tracks. Never mutates directly.",
     inputSchema: z.object({
       action: z.enum(["compare", "copy", "merge", "deduplicate", "reorder"]),
       playlistIds: z.array(z.number().int().positive()).min(1).max(100),

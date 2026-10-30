@@ -15,6 +15,7 @@ import {
 import { ChangePlans, type Operation } from "./changes.js";
 import { Store } from "./storage.js";
 import type { Config } from "./config.js";
+import { preserveImportedData } from "./lexicon/preservation.js";
 
 export class Runtime {
   readonly client: LexiconClient;
@@ -70,7 +71,35 @@ export class Runtime {
         throw new Error("Command is documented as unsupported");
       // Control actions operate on live UI state. Captured preconditions are checked immediately before dispatch.
     }
-    return { tool: op.name, input };
+    return {
+      tool: op.name,
+      input:
+        op.path === "/track"
+          ? await preserveImportedData(this.client, input)
+          : input,
+    };
+  }
+  async expandSelections(operations: Operation[]): Promise<Operation[]> {
+    const result: Operation[] = [];
+    let ids: number[] | undefined;
+    for (const operation of operations) {
+      if (operation.input.id !== "selected") {
+        result.push(operation);
+        continue;
+      }
+      this.operation(operation.tool).inputSchema.parse(operation.input);
+      if (!ids) {
+        const selected = await this.client.request("GET", "/tracks/selected");
+        ids = z.array(z.number().int().positive()).min(1).parse(selected.ids);
+      }
+      result.push(
+        ...ids.map((id) => ({
+          tool: operation.tool,
+          input: { ...operation.input, id },
+        })),
+      );
+    }
+    return result;
   }
   async execute(raw: Operation) {
     if (this.config.readOnly)
@@ -182,7 +211,7 @@ export class Runtime {
       return { ...metadata, parameterSchema: z.toJSONSchema(inputSchema) };
     }
     if (name === "lexicon_plan_changes")
-      return this.plans.create(input.operations);
+      return this.plans.create(await this.expandSelections(input.operations));
     if (name === "lexicon_get_change_plan") return this.plans.get(input.id);
     if (name === "lexicon_apply_change_plan")
       return this.plans.apply(input.id, input.hash);
@@ -218,7 +247,7 @@ export class Runtime {
     if (this.requiresPlan(op))
       return {
         reviewRequired: true,
-        plan: await this.plans.create([op]),
+        plan: await this.plans.create(await this.expandSelections([op])),
         instruction:
           "Show the preview and obtain user confirmation before calling lexicon_apply_change_plan with this plan ID and hash.",
       };

@@ -198,8 +198,13 @@ export class LexiconClient {
           kind,
         );
       }
-      if (payload === undefined) return { status: "dispatched" } as T;
-      if (!("data" in body))
+      if (payload === undefined && !reads) return { status: "dispatched" } as T;
+      if (
+        !("data" in body) ||
+        body.data === null ||
+        typeof body.data !== "object" ||
+        Array.isArray(body.data)
+      )
         throw new LexiconError(
           "Lexicon returned an unexpected response envelope",
           response.status,

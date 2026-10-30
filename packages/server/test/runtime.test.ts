@@ -143,3 +143,57 @@ it("never reports completion for fire-and-forget controls", async () => {
     await instance.call("lexicon_run_command", { action: "MusicPlayer_Play" }),
   ).toMatchObject({ status: "dispatched", completionObservable: false });
 });
+
+it("expands selected bulk edits into explicit frozen plan operations without writing", async () => {
+  const instance = await runtime();
+  const request = vi
+    .spyOn(instance.client, "request")
+    .mockImplementation(async (_method, path, input) => {
+      return (
+        path === "/tracks/selected"
+          ? { ids: [12, 13] }
+          : { track: { id: input?.id, title: "Before" } }
+      ) as never;
+    });
+  const result = (await instance.call("lexicon_update_track", {
+    id: "selected",
+    edits: { rating: 5 },
+  })) as { plan: { operations: Array<{ input: Record<string, unknown> }> } };
+  expect(result.plan.operations.map((op) => op.input.id)).toEqual([12, 13]);
+  expect(request.mock.calls.every((call) => call[0] === "GET")).toBe(true);
+  request.mockResolvedValue({ ids: [99] });
+  expect(result.plan.operations.map((op) => op.input.id)).toEqual([12, 13]);
+});
+
+it("preserves existing proprietary cue and grid data when edits omit it", async () => {
+  const instance = await runtime();
+  const provenance = { serato: { opaque: [1, 2, 3] } };
+  vi.spyOn(instance.client, "request").mockResolvedValue({
+    track: {
+      cuepoints: [{ id: 3, position: 0, data: provenance }],
+      tempomarkers: [{ id: 4, startTime: 0, bpm: 120, data: provenance }],
+    },
+  });
+  const prepared = await instance.prepare({
+    tool: "lexicon_update_track",
+    input: {
+      id: 12,
+      edits: {
+        cuepoints: [{ id: 3, position: 0, type: "1", startTime: 10 }],
+        tempomarkers: [{ id: 4, startTime: 1, bpm: 125 }],
+      },
+    },
+  });
+  expect(prepared.input.edits.cuepoints[0].data).toEqual(provenance);
+  expect(prepared.input.edits.tempomarkers[0].data).toEqual(provenance);
+});
+
+it("requires review for dynamic plugin action IDs", async () => {
+  const instance = await runtime();
+  expect(
+    instance.requiresPlan({
+      tool: "lexicon_run_command",
+      input: { action: "PluginRunAction_test:run" },
+    }),
+  ).toBe(true);
+});

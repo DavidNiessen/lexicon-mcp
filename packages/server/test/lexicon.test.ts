@@ -106,6 +106,57 @@ describe("upstream coverage", () => {
 });
 
 describe("Lexicon transport", () => {
+  it("rejects malformed success envelopes and empty reads", async () => {
+    for (const body of ["", "{}", '{"data":null}', '{"data":[]}', "not-json"]) {
+      const client = new LexiconClient({
+        fetch: async () => new Response(body, { status: 200 }),
+      });
+      await expect(client.request("GET", "/tracks")).rejects.toMatchObject({
+        kind: "upstream",
+      });
+    }
+  });
+  it("preserves nullable imported cue fields and validates loops and duplicate positions", () => {
+    const schema = getOperation("lexicon_update_track")!.inputSchema;
+    const cue = {
+      id: 8,
+      type: "1",
+      position: 0,
+      startTime: 0,
+      endTime: null,
+      data: { rekordbox: { unknown: [1, 2] } },
+    };
+    expect(schema.parse({ id: 1, edits: { cuepoints: [cue] } })).toEqual({
+      id: 1,
+      edits: { cuepoints: [cue] },
+    });
+    expect(
+      schema.safeParse({ id: 1, edits: { cuepoints: [cue, cue] } }).success,
+    ).toBe(false);
+    expect(
+      schema.safeParse({ id: 1, edits: { cuepoints: [{ ...cue, type: "5" }] } })
+        .success,
+    ).toBe(false);
+    expect(
+      schema.safeParse({
+        id: 1,
+        edits: { cuepoints: [{ ...cue, type: "5", endTime: 8 }] },
+      }).success,
+    ).toBe(true);
+    expect(
+      schema.safeParse({
+        id: 1,
+        edits: { tempomarkers: [{ startTime: 0, bpm: 0 }] },
+      }).success,
+    ).toBe(false);
+  });
+  it("accepts documented dynamic plugin IDs only with destructive review metadata", () => {
+    const action = "PluginRunAction_my.plugin:action.id";
+    expect(commandSchema.safeParse({ action }).success).toBe(true);
+    expect(
+      commandSchema.safeParse({ action: "PluginRunAction_malformed" }).success,
+    ).toBe(false);
+  });
   it("encodes arrays, objects and sort values and unwraps data", async () => {
     const client = await fake((req, res) => {
       const query = new URL(req.url!, "http://localhost").searchParams;

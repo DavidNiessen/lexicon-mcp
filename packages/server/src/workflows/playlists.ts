@@ -67,9 +67,11 @@ export async function playlistWorkflow(
       ],
       followUp: {
         action: "populate_created_playlist",
+        tool: "lexicon_add_playlist_tracks",
         trackIds: playlists[0]!.trackIds,
       },
-      note: "Review creation first. Use the returned playlist ID to plan adding these track IDs; creation IDs do not exist yet.",
+      copyMode: "materialized-playlist",
+      note: "Two-stage copy: first review and apply creation of an empty normal playlist. Then use its returned ID to create and review a second lexicon_add_playlist_tracks plan with followUp.trackIds. Folder and smartlist sources are materialized as their current tracks, not copied as hierarchy or rules. The copy is incomplete until the second plan succeeds.",
     };
   }
   const targetId = Number(input.targetId ?? ids[0]);

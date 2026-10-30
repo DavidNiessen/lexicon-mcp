@@ -175,19 +175,35 @@ export function listCommands(
     }));
 }
 export function getCommand(name: string): CommandDescriptor | undefined {
-  return commands.find((command) => command.name === name);
+  const known = commands.find((command) => command.name === name);
+  if (known) return known;
+  if (/^PluginRunAction_[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+$/.test(name))
+    return {
+      name,
+      classification: "trigger",
+      risk: "destructive",
+      prerequisites: ["Named plugin and action installed in Lexicon"],
+      description:
+        "Runs an installed plugin action by ID. Its effects depend on that plugin; acceptance does not establish completion.",
+      inputSchema: z.object({}).strict(),
+    };
+  return undefined;
 }
 
 export const commandSchema = z
   .object({
-    action: z.enum(
-      commands.map((command) => command.name) as [string, ...string[]],
-    ),
+    action: z
+      .string()
+      .refine(
+        (name) => getCommand(name) !== undefined,
+        "Unknown Lexicon command",
+      ),
     parameters: z.record(z.string(), z.unknown()).optional(),
   })
   .strict()
   .superRefine((input, ctx) => {
-    const command = getCommand(input.action)!;
+    const command = getCommand(input.action);
+    if (!command) return;
     if (command.classification === "unsupported")
       ctx.addIssue({
         code: "custom",

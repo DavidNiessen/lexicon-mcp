@@ -20,7 +20,7 @@ export class ExportService {
     format: "json" | "csv",
     outputPath: string,
     data: unknown,
-  ): Promise<{ outputPath: string; bytes: number }> {
+  ): Promise<{ outputPath: string; bytes: number; collection?: string }> {
     if (!isAbsolute(outputPath))
       throw new Error("Export outputPath must be absolute");
     const root = await realpath(this.allowedDirectory);
@@ -35,8 +35,20 @@ export class ExportService {
     )
       throw new Error("Export path is outside the configured directory");
     let content: string;
+    let collection: string | undefined;
     if (format === "json") content = `${JSON.stringify(data, null, 2)}\n`;
     else if (format === "csv") {
+      if (!Array.isArray(data) && data && typeof data === "object") {
+        const report = data as Record<string, unknown>;
+        collection = [
+          "findings",
+          "candidates",
+          "tracks",
+          "operations",
+          "memberships",
+        ].find((key) => Array.isArray(report[key]));
+        if (collection) data = report[collection];
+      }
       if (
         !Array.isArray(data) ||
         data.some(
@@ -58,6 +70,10 @@ export class ExportService {
       flag: "wx",
       mode: 0o600,
     });
-    return { outputPath: candidate, bytes: Buffer.byteLength(content) };
+    return {
+      outputPath: candidate,
+      bytes: Buffer.byteLength(content),
+      ...(collection ? { collection } : {}),
+    };
   }
 }
