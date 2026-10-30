@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { ApprovalManager } from "../src/approvals.js";
 import { ChangePlans } from "../src/changes.js";
 import { Store } from "../src/storage.js";
-import { Runtime } from "../src/runtime.js";
+import { managementTools, Runtime } from "../src/runtime.js";
 
 const folders: string[] = [];
 afterEach(async () => {
@@ -117,7 +117,16 @@ it("serializes concurrent clicks so a credential cannot duplicate writes", async
     f.manager.confirm({ ...grant, decision: "apply" }),
     f.manager.confirm({ ...grant, decision: "apply" }),
   ]);
-  expect(outcomes.some((result) => result.status === "fulfilled")).toBe(true);
+  expect(
+    outcomes.some((result) => result.status === "fulfilled"),
+    outcomes
+      .map((result) =>
+        result.status === "rejected"
+          ? String(result.reason)
+          : result.value.status,
+      )
+      .join("; "),
+  ).toBe(true);
   expect(f.writes()).toBe(1);
 });
 it("cancels in the UI without writing and cannot later apply that preview", async () => {
@@ -155,7 +164,7 @@ it("still checks stale previews and read-only policy after a valid UI action", a
   ).rejects.toThrow("Read-only");
   expect(readonly.writes()).toBe(0);
 });
-it("rejects the old chat apply route even with a plan hash or literal yes", async () => {
+it("rejects model apply and cancellation even with a plan hash or literal yes", async () => {
   const directory = await mkdtemp(join(tmpdir(), "lexicon-runtime-ui-"));
   folders.push(directory);
   const runtime = new Runtime({
@@ -175,10 +184,15 @@ it("rejects the old chat apply route even with a plan hash or literal yes", asyn
   for (const name of [
     "lexicon_apply_change_plan",
     "lexicon_confirm_change_plan",
+    "lexicon_cancel_change_plan",
   ])
     await expect(
       runtime.call(name, { ...grant, decision: "apply", confirmation: "yes" }),
     ).rejects.toThrow("preview UI");
+  expect((await runtime.plans.get(plan.id)).status).toBe("pending");
+  expect(
+    managementTools.some((tool) => tool.name === "lexicon_cancel_change_plan"),
+  ).toBe(false);
   expect(request.mock.calls.every(([method]) => method === "GET")).toBe(true);
   await runtime.jobs.close();
 });

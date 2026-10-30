@@ -10,12 +10,48 @@ export const previewClient = String.raw`
   const controls = document.getElementById('approval-controls');
   const pending = new Map();
   let model, grant, inFlight = false, ready = false, sequence = 0;
+  let authoritative = false, restoring = false, savedSnapshot, lastHeight = 0;
   const text = value => String(value ?? '—').slice(0, 401);
   const node = (tag, value) => { const item = document.createElement(tag); if (value !== undefined) item.textContent = text(value); return item; };
   const expires = value => typeof value === 'number' ? value : Date.parse(value);
-  function resize() {
-    const height = document.documentElement.scrollHeight;
-    if (!ready || !Number.isFinite(height) || height <= 0) return;
+  const own = (value, key) => value && Object.prototype.hasOwnProperty.call(value, key);
+  const final = value => ['completed','cancelled','failed','interrupted'].includes(value?.plan?.status);
+  function snapshot(value) {
+    if (!value || !Array.isArray(value.rows) || !Array.isArray(value.columns)) return;
+    return {
+      title:text(value.title),description:text(value.description),status:text(value.status),note:text(value.note),
+      columns:value.columns.slice(0,6).map(text),rows:value.rows.slice(0,100).filter(Array.isArray).map(row=>row.slice(0,6).map(text)),
+      facts:(Array.isArray(value.facts)?value.facts:[]).slice(0,8).filter(Array.isArray).map(pair=>pair.slice(0,2).map(text)),
+      total:Number.isFinite(value.total)?value.total:0,
+      ...(value.plan?{plan:{id:text(value.plan.id),hash:text(value.plan.hash),status:text(value.plan.status)}}:{})
+    };
+  }
+  function persist() {
+    if (restoring || !model || typeof window.openai?.setWidgetState !== 'function') return;
+    // A presentation cache is never approval authority. In particular, never persist grant.
+    const state={privateContent:{lexicon:{version:1,preview:snapshot(model),filter:search.value.slice(0,200),detailsOpen:!document.getElementById('details').hidden}}};
+    const serialized=JSON.stringify(state);
+    if (serialized===savedSnapshot) return;
+    try { window.openai.setWidgetState(state); savedSnapshot=serialized; } catch { /* Host persistence is optional. */ }
+  }
+  function restore(state) {
+    const cached=state?.privateContent?.lexicon;
+    if (cached?.version!==1 || authoritative) return;
+    const value=snapshot(cached.preview);
+    if (!value || (model?.plan && value.plan?.id!==model.plan.id)) return;
+    restoring=true;
+    if (typeof cached.filter==='string') search.value=cached.filter.slice(0,200);
+    const details=document.getElementById('details');details.hidden=cached.detailsOpen!==true;
+    if (value) render(value);
+    details.textContent=details.hidden?'':JSON.stringify(model,null,2);
+    document.getElementById('show-details').setAttribute('aria-expanded',String(!details.hidden));
+    document.getElementById('show-details').textContent=details.hidden?'Show preview data':'Hide preview data';
+    restoring=false;
+  }
+  function resize(force = false) {
+    const height = Math.ceil(Math.max(document.body?.scrollHeight ?? 0,document.documentElement.scrollHeight));
+    if (!ready || document.visibilityState==='hidden' || !Number.isFinite(height) || height <= 0 || (!force && height===lastHeight)) return;
+    lastHeight=height;
     if (typeof window.openai?.notifyIntrinsicHeight === 'function') window.openai.notifyIntrinsicHeight(height);
     else if (window.parent !== window) window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{height}},'*');
   }
@@ -51,6 +87,8 @@ export const previewClient = String.raw`
   }
   function render(value) {
     if (!value || !Array.isArray(value.rows) || !Array.isArray(value.columns)) return;
+    // Hosts may replay the original planner result after restoring a completed widget.
+    if (final(model) && model.plan.id===value.plan?.id && model.plan.hash===value.plan.hash && value.plan.status==='pending') return;
     model = value;
     document.getElementById('title').textContent = text(value.title);
     document.getElementById('description').textContent = text(value.description);
@@ -73,23 +111,53 @@ export const previewClient = String.raw`
     table.append(body); root.replaceChildren(table);
     document.getElementById('truncation').hidden = !(value.total > value.rows.length);
     search.disabled = value.rows.length === 0;
-    filter(); buttons(); resize();
+    filter(); buttons(); resize(); persist();
   }
   function theme(context) {
     if (context?.theme === 'light' || context?.theme === 'dark') document.documentElement.dataset.theme = context.theme;
   }
   function output(result) {
-    const metadata = result?._meta ?? {};
-    grant = metadata['lexicon/approval'];
-    const preview = metadata['lexicon/preview'];
-    if (preview) render(preview);
+    const parts=[],seen=new Set();
+    function visit(value,depth=0) {
+      if (!value || typeof value!=='object' || depth>5 || seen.has(value)) return;
+      seen.add(value);parts.push(value);
+      for(const key of ['_meta','mcp_tool_result','call_tool_result']) visit(value[key],depth+1);
+      if(value.result && (value.result._meta || value.result.structuredContent || value.result.content)) visit(value.result,depth+1);
+    }
+    visit(result);
+    let preview,plan,hasGrant=false,nextGrant;
+    for(const part of parts) {
+      if(own(part,'lexicon/preview')) preview=part['lexicon/preview'];
+      if(own(part,'lexicon/approval')) {hasGrant=true;nextGrant=part['lexicon/approval'];}
+      const data=part.structuredContent?.result;
+      if(data) plan=data.plan ?? data;
+      if(!preview && Array.isArray(part.content)) {
+        const html=part.content.find(item=>item.type==='resource' && typeof item.resource?.text==='string')?.resource.text;
+        const initial=html?.match(/<script id="initial" type="application\/json">([\s\S]*?)<\/script>/)?.[1];
+        if(initial) {try {preview=JSON.parse(initial);} catch {/* Ignore incomplete host snapshots. */}}
+      }
+    }
+    if (preview) {authoritative=true;render(snapshot(preview));}
     else {
-      const plan = result?.structuredContent?.result;
       if (model?.plan && plan?.id === model.plan.id && plan?.hash === model.plan.hash && typeof plan.status === 'string') {
+        authoritative=true;
         render({...model,status:plan.status,plan:{...model.plan,status:plan.status}});
       }
     }
+    if(hasGrant) grant=nextGrant;
+    if(final(model) || (grant && (grant.id!==model?.plan?.id || grant.hash!==model?.plan?.hash))) grant=undefined;
     buttons();
+  }
+  function globals(value=window.openai) {
+    if(typeof window.openai?.callTool==='function') ready=true;
+    theme(value);
+    restore(value?.widgetState ?? window.openai?.widgetState);
+    output({structuredContent:value?.toolOutput ?? window.openai?.toolOutput,_meta:value?.toolResponseMetadata ?? window.openai?.toolResponseMetadata});
+    buttons();resize(true);
+  }
+  function visible() {
+    if(document.visibilityState==='hidden') return;
+    globals();resize(true);
   }
   function rpc(method, params, timeout = 120000) {
     if (window.parent === window) return Promise.reject(new Error('No MCP Apps host is connected.'));
@@ -123,13 +191,13 @@ export const previewClient = String.raw`
   }
   apply.addEventListener('click',()=>decide('apply'));
   cancel.addEventListener('click',()=>decide('cancel'));
-  search.addEventListener('input', filter);
+  search.addEventListener('input', ()=>{filter();persist();});
   document.getElementById('show-details').addEventListener('click', () => {
     const details = document.getElementById('details'); details.hidden = !details.hidden;
     details.textContent = model ? JSON.stringify(model, null, 2) : 'No result received.';
     document.getElementById('show-details').setAttribute('aria-expanded', String(!details.hidden));
     document.getElementById('show-details').textContent = details.hidden ? 'Show preview data' : 'Hide preview data';
-    resize();
+    resize();persist();
   });
   window.addEventListener('message',event=>{
     if (event.source !== window.parent) return;
@@ -142,7 +210,7 @@ export const previewClient = String.raw`
       return;
     }
     if (message.method === 'ui/notifications/tool-result') output(message.params);
-    if (message.method === 'ui/notifications/host-context-changed') theme(message.params);
+    if (message.method === 'ui/notifications/host-context-changed') {theme(message.params);resize(true);}
   });
   window.addEventListener('message',event=>{
     if (event.source !== window.parent && event.source !== window) return;
@@ -150,20 +218,24 @@ export const previewClient = String.raw`
     const data=event.data.payload?.renderData;theme(data);output(data?.toolOutput);
   });
   window.addEventListener('openai:set_globals',event=>{
-    const globals=event.detail?.globals;
-    if (globals?.toolOutput || globals?.toolResponseMetadata) output({structuredContent:globals.toolOutput,_meta:globals.toolResponseMetadata});
+    globals(event.detail?.globals);
   });
+  window.addEventListener('pageshow',visible);
+  window.addEventListener('focus',visible);
+  window.addEventListener('pagehide',persist);
+  document.addEventListener('visibilitychange',visible);
   const initial=document.getElementById('initial');
+  restoring=true;
   if(initial.textContent){try{render(JSON.parse(initial.textContent));}catch{/* Stay safely empty. */}}
-  if(typeof window.openai?.callTool==='function'){
-    ready=true;output({structuredContent:window.openai.toolOutput,_meta:window.openai.toolResponseMetadata});
-  } else if(window.parent !== window) {
+  restoring=false;
+  globals();
+  if(!ready && window.parent !== window) {
     rpc('ui/initialize',{appInfo:{name:'Lexicon library preview',version:'1.0.0'},appCapabilities:{},protocolVersion:'2025-11-21'},15000)
       .then(result=>{ready=true;theme(result?.hostContext);window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized',params:{}},'*');buttons();resize();})
-      .catch(()=>buttons('This client does not provide the MCP Apps confirmation bridge. Changes remain blocked.'));
+      .catch(()=>{if(!ready)buttons('This client does not provide the MCP Apps confirmation bridge. Changes remain blocked.');});
   }
   window.parent.postMessage({type:'ui-lifecycle-iframe-ready'},'*');
-  if (typeof ResizeObserver === 'function') new ResizeObserver(resize).observe(document.body);
-  setInterval(()=>{if(grant && expires(grant.expiresAt)<=Date.now()){grant=undefined;buttons('This approval expired. Reopen the plan preview to refresh it.');}},1000);
+  if (typeof ResizeObserver === 'function') new ResizeObserver(()=>resize()).observe(document.body);
+  setInterval(()=>{if(!ready && typeof window.openai?.callTool==='function')globals();if(grant && expires(grant.expiresAt)<=Date.now()){grant=undefined;buttons('This approval expired. Reopen the plan preview to refresh it.');}},1000);
   buttons();
 })();`;

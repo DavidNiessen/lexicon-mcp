@@ -96,6 +96,14 @@ it("requires the UI-private credential and never exposes it to the model", async
   expect(
     tools.tools.find((t) => t.name === "lexicon_confirm_change_plan")?._meta,
   ).toMatchObject({ ui: { visibility: ["app"] } });
+  const confirmMeta = tools.tools.find(
+    (t) => t.name === "lexicon_confirm_change_plan",
+  )?._meta;
+  expect((confirmMeta?.ui as any)?.resourceUri).toBeUndefined();
+  expect(confirmMeta?.["openai/outputTemplate"]).toBeUndefined();
+  expect(tools.tools.some((t) => t.name === "lexicon_cancel_change_plan")).toBe(
+    false,
+  );
   const rejected = await f.client.callTool({
     name: "lexicon_confirm_change_plan",
     arguments: {
@@ -117,6 +125,9 @@ it("requires the UI-private credential and never exposes it to the model", async
     },
   });
   expect(approved.isError).not.toBe(true);
+  expect(
+    (approved.content as any[]).some((item) => item.type === "resource"),
+  ).toBe(false);
   expect((approved.structuredContent as any).result.status).toBe("completed");
   expect(f.writes()).toBe(1);
   await f.client.callTool({
@@ -188,3 +199,33 @@ it("handles a native MCP dialog through the actual planning and review tools", a
   expect(f.writes()).toBe(1);
   expect((result.structuredContent as any).result.status).toBe("completed");
 });
+
+it.each([
+  { action: "cancel" },
+  { action: "decline" },
+  { action: "accept", content: { approve: false } },
+] as const)(
+  "leaves the plan pending after a native dialog returns %j, without a retry instruction",
+  async (answer) => {
+    const f = await connected(false, true, true);
+    const dialog = vi.fn(async () => answer);
+    f.client.setRequestHandler("elicitation/create", dialog);
+    const plan = await f.runtime.plans.create([
+      { tool: "lexicon_update_track", input: { id: 1, edits: { rating: 2 } } },
+    ]);
+    const response = await f.client.callTool({
+      name: "lexicon_review_change_plan",
+      arguments: { id: plan.id },
+    });
+    expect(response.isError).not.toBe(true);
+    const result = (response.structuredContent as any).result;
+    expect(result.status).toBe("pending");
+    expect(result.review.dismissed).toBe(true);
+    expect(result.review.nextTool).toBeUndefined();
+    expect(result.review.message).toContain("Do not cancel it or reopen");
+    expect(response._meta?.["lexicon/approval"]).toBeUndefined();
+    expect((await f.runtime.plans.get(plan.id)).status).toBe("pending");
+    expect(dialog).toHaveBeenCalledOnce();
+    expect(f.writes()).toBe(0);
+  },
+);

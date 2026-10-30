@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — Preview lifecycle
+
+- Make the preview canvas transparent and request no host border.
+- Restore bounded widget snapshots, filters, and disclosure after remounts without persisting approval credentials.
+- Handle canonical ChatGPT tool-result envelopes, partial globals, delayed bridges, and visibility changes.
+- Keep terminal outcomes stable when hosts replay the original pending tool result.
+- Preserve historical resource URIs so older conversations can resolve preview templates after upgrades.
+- Leave dismissed native reviews pending and remove model-callable cancellation.
+- Keep Apply/Cancel interactions in the existing preview instead of advertising another template.
+
 ## Unreleased — UI approvals
 
 - Replace chat confirmation and the model-callable apply tool with explicit UI approvals.

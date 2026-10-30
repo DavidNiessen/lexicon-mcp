@@ -92,7 +92,7 @@ export function nativeReviewMessage(plan: Plan) {
     );
   lines.push(
     "",
-    "Check Apply these changes and submit this dialog to approve. Decline, cancel, or leave it unchecked to make no changes. A message in chat does not approve this plan.",
+    "Check Apply these changes and submit this dialog to approve. Submit it unchecked to cancel this plan. Closing or declining the dialog leaves the plan pending. A message in chat does not approve this plan.",
   );
   return lines.join("\n");
 }
@@ -129,6 +129,8 @@ function buildController(runtime: ReviewRuntime) {
         throw new Error(
           "UI confirmation was not completed; no changes were applied.",
         );
+      if (response.action !== "accept")
+        return { kind: "dismissed" as const, plan };
       const content = acceptedContent(
         ctx.mcpReq.inputResponses,
         REVIEW_KEY,
@@ -136,14 +138,12 @@ function buildController(runtime: ReviewRuntime) {
       );
       if (response.action === "accept" && !content)
         throw new Error("Invalid UI confirmation; no changes were applied.");
+      if (content?.approve !== true)
+        return { kind: "dismissed" as const, plan };
       const grant = await runtime.approvals.issue(plan.id, plan.hash);
-      const decision =
-        response.action === "accept" && content?.approve === true
-          ? "apply"
-          : "cancel";
       return {
         kind: "resolved" as const,
-        plan: await runtime.confirmFromUi({ ...grant, decision }),
+        plan: await runtime.confirmFromUi({ ...grant, decision: "apply" }),
       };
     },
     async request(

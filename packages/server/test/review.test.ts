@@ -139,9 +139,7 @@ it("shows the exact plan scope and explicitly identifies truncated previews", ()
 
 it.each([
   [{ action: "accept", content: { approve: true } }, "completed", "apply"],
-  [{ action: "accept", content: { approve: false } }, "cancelled", "cancel"],
-  [{ action: "decline" }, "cancelled", "cancel"],
-  [{ action: "cancel" }, "cancelled", "cancel"],
+  [{ action: "accept", content: { approve: false } }, "pending", undefined],
 ] as const)(
   "uses a real legacy MCP dialog response %j",
   async (answer, status, decision) => {
@@ -171,13 +169,47 @@ it.each([
       "Schranz | Industrial",
     );
     expect(plan.status).toBe(status);
-    expect(runtime.confirmFromUi).toHaveBeenCalledExactlyOnceWith({
-      id: plan.id,
-      hash: plan.hash,
-      token: "secret-ui-grant",
-      decision,
-    });
+    if (decision)
+      expect(runtime.confirmFromUi).toHaveBeenCalledExactlyOnceWith({
+        id: plan.id,
+        hash: plan.hash,
+        token: "secret-ui-grant",
+        decision,
+      });
+    else {
+      expect(runtime.approvals.issue).not.toHaveBeenCalled();
+      expect(runtime.confirmFromUi).not.toHaveBeenCalled();
+    }
     expect(JSON.stringify(result)).not.toContain("secret-ui-grant");
+  },
+);
+
+it.each(["cancel", "decline"] as const)(
+  "leaves a plan pending when the host dismisses a native dialog with %s",
+  async (action) => {
+    const { plan, runtime } = fixture();
+    const server = harness(runtime);
+    const client = new LegacyClient(
+      { name: "dismissed-ui", version: "1.0.0" },
+      { capabilities: { elicitation: { form: {} } } },
+    );
+    client.setRequestHandler(ElicitRequestSchema, async () => ({ action }));
+    const [clientTransport, serverTransport] =
+      InMemoryTransport.createLinkedPair();
+    cleanup.push(
+      () => server.close(),
+      () => client.close(),
+    );
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+    const result = await client.callTool({
+      name: TOOL,
+      arguments: { id: plan.id },
+    });
+    expect(result.isError).not.toBe(true);
+    expect(plan.status).toBe("pending");
+    expect(runtime.approvals.issue).not.toHaveBeenCalled();
+    expect(runtime.confirmFromUi).not.toHaveBeenCalled();
   },
 );
 

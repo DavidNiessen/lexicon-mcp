@@ -9,7 +9,11 @@ import {
 import { expect, it, vi } from "vitest";
 import { Runtime } from "../src/runtime.js";
 import { serveHttp } from "../src/http.js";
-import { PREVIEW_URI, PREVIEW_MIME } from "../src/ui/document.js";
+import {
+  PREVIEW_URI,
+  PREVIEW_ALIASES,
+  PREVIEW_MIME,
+} from "../src/ui/document.js";
 
 it("advertises UI resources and preserves text and structured results over MCP", async () => {
   const directory = await mkdtemp(join(tmpdir(), "lexicon-ui-"));
@@ -45,6 +49,12 @@ it("advertises UI resources and preserves text and structured results over MCP",
     const ui = await client.readResource({ uri: PREVIEW_URI });
     expect(ui.contents[0]?.mimeType).toBe(PREVIEW_MIME);
     expect(JSON.stringify(ui)).toContain("ui/initialize");
+    for (const uri of PREVIEW_ALIASES) {
+      const historical = await client.readResource({ uri });
+      expect(historical.contents[0]?.uri).toBe(uri);
+      expect(historical.contents[0]?.mimeType).toBe(PREVIEW_MIME);
+      expect(JSON.stringify(historical)).toContain("setWidgetState");
+    }
     const result = {
       findings: [{ trackId: 1, issue: "missing_metadata" }],
       total: 1,

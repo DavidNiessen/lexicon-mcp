@@ -225,13 +225,12 @@ export class Runtime {
     if (name === "lexicon_get_change_plan") return this.plans.get(input.id);
     if (
       name === "lexicon_apply_change_plan" ||
-      name === "lexicon_confirm_change_plan"
+      name === "lexicon_confirm_change_plan" ||
+      name === "lexicon_cancel_change_plan"
     )
       throw new Error(
-        "Changes require Apply in the preview UI. Text confirmation cannot apply a plan.",
+        "Plan decisions require Apply or Cancel in the preview UI. Chat tools cannot apply or cancel a plan.",
       );
-    if (name === "lexicon_cancel_change_plan")
-      return this.plans.cancel(input.id);
     if (name === "lexicon_start_job")
       return this.jobs.start(
         input.workflow,
@@ -305,11 +304,6 @@ export const managementTools = [
   {
     name: "lexicon_get_change_plan",
     description: "Read an existing preview and per-operation outcomes.",
-    inputSchema: z.object({ id }),
-  },
-  {
-    name: "lexicon_cancel_change_plan",
-    description: "Cancel a pending plan.",
     inputSchema: z.object({ id }),
   },
   {

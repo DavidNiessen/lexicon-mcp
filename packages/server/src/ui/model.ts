@@ -249,7 +249,6 @@ export function previewFor(raw: unknown): Preview | undefined {
 export const PREVIEW_TOOLS = new Set([
   "lexicon_plan_changes",
   "lexicon_get_change_plan",
-  "lexicon_apply_change_plan",
   "lexicon_library_health",
   "lexicon_find_duplicates",
   "lexicon_prepare_set",

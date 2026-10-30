@@ -52,6 +52,8 @@ Use the same agent and scope selection with `uninstall` to remove registrations,
 
 Compatible hosts can render visual change-plan, health-report, and prepared-set previews. Pending plans have Apply/Cancel controls. Clients with MCP form elicitation can use a native review dialog instead. Installation does not add an embedded renderer to a host. Ask the assistant to call `lexicon_ui_status` to check the connected client's capabilities. Clients with neither UI path can inspect text/JSON reports, but cannot apply protected changes. Chat replies do not approve a plan.
 
+The preview canvas is transparent and follows the host theme. ChatGPT widget state restores the view after iframe remounts when available. Approval credentials are not persisted with that snapshot. Returning to a chat never applies or cancels a plan, and closing a native dialog leaves it pending. If an older preview is blank or its approval has expired, ask to reopen that existing plan after upgrading and restarting the client; old cached templates may retain their original UI code.
+
 ## Manual configuration and development
 
 After `pnpm install --frozen-lockfile` and `pnpm build`, clients using `mcpServers` can launch the development bundle:
