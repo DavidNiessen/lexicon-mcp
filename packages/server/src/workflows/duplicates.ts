@@ -10,6 +10,8 @@ import {
 
 interface Candidate {
   trackIds: number[];
+  trackCount?: number;
+  truncatedTrackIds?: boolean;
   confidence: "high" | "medium";
   reason: string;
 }
@@ -61,7 +63,12 @@ export async function findDuplicates(
   const exactGroups = new Map<number, number>();
   const add = (candidate: Candidate) => {
     if (total >= offset && candidates.length < limit)
-      candidates.push(candidate);
+      candidates.push({
+        ...candidate,
+        trackCount: candidate.trackIds.length,
+        truncatedTrackIds: candidate.trackIds.length > 1000,
+        trackIds: candidate.trackIds.slice(0, 1000),
+      });
     total++;
   };
   let fingerprintGroupId = 0;

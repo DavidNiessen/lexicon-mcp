@@ -1,17 +1,13 @@
 import { access } from "node:fs/promises";
+import { inspectTaxonomy, type HealthFinding } from "./taxonomy.js";
 import {
   abortIfNeeded,
   dataOf,
   trackPages,
   type LibraryClient,
   type WorkflowContext,
+  normalizeText,
 } from "./types.js";
-
-interface Finding {
-  trackId: number;
-  issue: string;
-  fields?: string[];
-}
 
 export async function libraryHealth(
   client: LibraryClient,
@@ -20,21 +16,20 @@ export async function libraryHealth(
 ) {
   const offset = Number(input.offset ?? 0);
   const limit = Number(input.limit ?? 100);
-  const findings: Finding[] = [];
+  const findings: HealthFinding[] = [];
   let totalFindings = 0;
   let scanned = 0;
   const counts: Record<string, number> = {};
-  const tags = dataOf(await client.request("GET", "/tags"));
-  const rawTags = tags.tags ?? tags.customTags ?? [];
-  const validTags = new Set(
-    Array.isArray(rawTags) ? rawTags.map((tag: { id: number }) => tag.id) : [],
-  );
-  const add = (finding: Finding) => {
+  const add = (finding: HealthFinding) => {
     counts[finding.issue] = (counts[finding.issue] ?? 0) + 1;
     if (totalFindings >= offset && findings.length < limit)
       findings.push(finding);
     totalFindings++;
   };
+  const validTags = inspectTaxonomy(
+    dataOf(await client.request("GET", "/tags")),
+    add,
+  );
   for await (const tracks of trackPages(
     client,
     {
@@ -71,6 +66,8 @@ export async function libraryHealth(
           track[field] === undefined ||
           track[field] === null ||
           track[field] === "" ||
+          (typeof track[field] === "string" &&
+            normalizeText(track[field]) === "") ||
           (field === "bpm" && track[field] === 0),
       );
       if (missing.length)
@@ -84,6 +81,11 @@ export async function libraryHealth(
         track.tags.some((id) => !validTags.has(id))
       )
         add({ trackId: track.id, issue: "unknown_tag_assignment" });
+      if (
+        Array.isArray(track.tags) &&
+        new Set(track.tags).size !== track.tags.length
+      )
+        add({ trackId: track.id, issue: "duplicate_tag_assignment" });
       if (
         input.checkFiles &&
         !track.streamingService &&

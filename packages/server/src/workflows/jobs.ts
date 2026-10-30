@@ -111,6 +111,18 @@ export class JobManager {
     return { id, result };
   }
 
+  async exportResults(id: string): Promise<unknown> {
+    const job = await this.status(id);
+    if (job.state !== "completed") {
+      throw new Error(
+        `Only completed jobs can be exported; current state: ${job.state}`,
+      );
+    }
+    return JSON.parse(
+      await readFile(this.path(id, "result"), "utf8"),
+    ) as unknown;
+  }
+
   async cancel(id: string): Promise<Job> {
     const job = await this.status(id);
     if (job.state !== "running") return job;

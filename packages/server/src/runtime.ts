@@ -202,7 +202,7 @@ export class Runtime {
     if (name === "lexicon_export_report") {
       if (!this.config.exportDir)
         throw new Error("Configure exportDir before exporting reports");
-      const result = await this.jobs.results(input.id, 0, 10000);
+      const result = await this.jobs.exportResults(input.id);
       return new ExportService(this.config.exportDir).write(
         input.format,
         input.outputPath,
