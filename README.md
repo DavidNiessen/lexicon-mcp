@@ -37,7 +37,7 @@ The newest verified build from `main`. Choose this channel to try current featur
 <!-- install:prerelease:start -->
 
 ```sh
-npx --yes https://github.com/DavidNiessen/lexicon-mcp/releases/download/v0.1.0-dev.41118386116.1/lexicon-mcp-0.1.0-dev.41118386116.1.tgz install
+npx --yes https://github.com/DavidNiessen/lexicon-mcp/releases/download/v0.1.0-dev.41122894143.1/lexicon-mcp-0.1.0-dev.41122894143.1.tgz install
 ```
 
 <!-- install:prerelease:end -->
