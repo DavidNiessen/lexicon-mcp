@@ -4,6 +4,7 @@ import { loadConfig, initializeConfig } from "./config.js";
 import { Runtime } from "./runtime.js";
 import { createServer } from "./mcp.js";
 import { serveHttp } from "./http.js";
+import { VERSION } from "./version.js";
 
 async function main() {
   const { values, positionals } = parseArgs({
@@ -16,7 +17,7 @@ async function main() {
     },
   });
   if (values.version) {
-    console.log("0.1.0");
+    console.log(VERSION);
     return;
   }
   if (values.help || !positionals.length) {
@@ -50,7 +51,7 @@ async function main() {
     const status = await runtime.client.health();
     console.log(
       JSON.stringify(
-        { version: "0.1.0", node: process.version, ...status },
+        { version: VERSION, node: process.version, ...status },
         null,
         2,
       ),

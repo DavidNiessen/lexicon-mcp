@@ -3,13 +3,41 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing v-prefixed version tag matching the server package
-        required: true
+        description: Optional version or tag (e.g. 0.2.0 or v0.2.0-rc.1); blank selects from Conventional Commits
+        required: false
         type: string
+concurrency:
+  group: private-candidate-release
+  cancel-in-progress: false
 permissions:
   contents: read
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Select version, validate and tag source
+        id: version
+        run: node scripts/prepare-release.mjs
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
   build:
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -18,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ needs.prepare.outputs.tag }}
           fetch-depth: 0
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -27,7 +55,7 @@ jobs:
           cache: pnpm
       - run: node scripts/check-release.mjs
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
       - run: pnpm install --frozen-lockfile
@@ -41,7 +69,7 @@ jobs:
           path: release/
           retention-days: 30
   draft:
-    needs: build
+    needs: [prepare, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -49,12 +77,12 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ needs.prepare.outputs.tag }}
           fetch-depth: 0
       - name: Collect artifacts and create private draft
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
         run: node scripts/draft-release.mjs
