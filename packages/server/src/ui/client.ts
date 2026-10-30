@@ -114,7 +114,16 @@ export const previewClient = String.raw`
     filter(); buttons(); resize(); persist();
   }
   function theme(context) {
-    if (context?.theme === 'light' || context?.theme === 'dark') document.documentElement.dataset.theme = context.theme;
+    const root=document.documentElement;
+    if (context?.theme === 'light' || context?.theme === 'dark') {
+      root.dataset.theme=context.theme;
+      // An iframe scheme mismatch paints an opaque UA canvas even with transparent CSS.
+      root.style.setProperty('color-scheme',context.theme);
+    }
+    for(const [name,value] of Object.entries(context?.styles?.variables ?? {})) {
+      if(!/^--(?:color-[a-z0-9-]+|font-sans|font-mono)$/.test(name) || typeof value!=='string' || value.length>1024 || /[;{}]|url\s*\(/i.test(value)) continue;
+      root.style.setProperty(name,value);
+    }
   }
   function output(result) {
     const parts=[],seen=new Set();

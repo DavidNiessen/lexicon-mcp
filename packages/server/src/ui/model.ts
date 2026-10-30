@@ -245,16 +245,3 @@ export function previewFor(raw: unknown): Preview | undefined {
   }
   return preview;
 }
-
-export const PREVIEW_TOOLS = new Set([
-  "lexicon_plan_changes",
-  "lexicon_get_change_plan",
-  "lexicon_library_health",
-  "lexicon_find_duplicates",
-  "lexicon_prepare_set",
-  "lexicon_cleanup_metadata",
-  "lexicon_playlist_workflow",
-  "lexicon_job_results",
-  "lexicon_job_status",
-  "lexicon_start_job",
-]);

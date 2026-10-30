@@ -31,6 +31,8 @@ The installer adapts selected agents' native configuration formats, preserves un
 
 MCP UI resources provide previews and explicit Apply/Cancel controls. The app-only confirmation tool requires a short-lived credential delivered only in UI-private metadata. MCP form elicitation supplies a native review dialog where embedded Apps are unavailable, using a signed continuation bound to the exact plan and request. No client capability means no protected apply; text/JSON remains available for inspection. The UI never bypasses stale-plan validation or read-only mode.
 
+Planning, inspection, and display are separate. `presentation.ts` declares the tools that render UI; only `lexicon_review_change_plan` renders change plans and issues their credentials. Read-only report display rejects plan-shaped data. Confirmation updates the existing component without advertising another template. The component declares both color schemes before first paint, applies the host's selected scheme and style tokens, and leaves the document canvas transparent.
+
 ## Decisions
 
 - Use official Lexicon APIs; avoid database writes and unattended UI automation.

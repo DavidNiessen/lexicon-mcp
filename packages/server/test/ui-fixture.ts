@@ -133,13 +133,18 @@ export function fixture(
   };
   const parent = { postMessage: (message: any) => messages.push(message) };
   window.parent = standalone ? window : parent;
+  const styleProperties = new Map<string, string>();
   const document = {
     getElementById: (id: string) => elements.get(id),
     createElement: (tag: string) => new Element(tag),
     documentElement: {
       dataset: {},
       scrollHeight: 640,
-      style: { setProperty: () => undefined },
+      style: {
+        setProperty: (name: string, value: string) =>
+          styleProperties.set(name, value),
+        getPropertyValue: (name: string) => styleProperties.get(name) ?? "",
+      },
     },
     body: { scrollHeight: 640 },
     visibilityState: "visible",
@@ -170,12 +175,14 @@ export function fixture(
     documentListeners.get(name)?.forEach((handler) => handler({}));
   const send = (data: any, source = window.parent) =>
     event("message", { source, data });
-  const ready = async () => {
+  const ready = async (
+    hostContext: Record<string, unknown> = { theme: "dark" },
+  ) => {
     const init = messages.find((message) => message.method === "ui/initialize");
     send({
       jsonrpc: "2.0",
       id: init.id,
-      result: { hostContext: { theme: "dark" } },
+      result: { hostContext },
     });
     await flush();
   };

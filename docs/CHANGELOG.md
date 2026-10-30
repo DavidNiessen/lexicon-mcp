@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — One plan widget and Claude theming
+
+- Separate plan creation and inspection from display: only `lexicon_review_change_plan` opens a plan widget or dialog and issues an approval credential.
+- Keep proposal generation and job polling data-only; add `lexicon_show_report` for visual read-only reports without changing library data.
+- Declare supported color schemes before first paint and follow the host scheme, preventing browsers from painting a white iframe canvas in dark mode.
+- Apply host color and font tokens, preserve partial updates, and retain historical resource URIs.
+- Verify rendered pixels through nested light/dark host frames, not just transparent CSS values.
+
 ## Unreleased — Preview lifecycle
 
 - Make the preview canvas transparent and request no host border.

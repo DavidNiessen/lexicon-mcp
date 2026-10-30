@@ -41,6 +41,10 @@ Common command shortcuts are `lexicon_player_load`, `lexicon_player_play`, `lexi
 
 MCP UI-capable hosts display change-plan previews, library-health findings, and prepared-set results alongside tool responses. Filtering and disclosure are read-only; a pending plan's Apply/Cancel buttons submit an explicit decision through an app-only confirmation tool. The exact plan ID/hash and a UI-private, expiring credential are required. The widget cannot silently approve itself on load.
 
+For changes, planning and inspection return data only. Call `lexicon_review_change_plan` once to open the saved plan's widget or native dialog; subsequent inspection and confirmation do not create another widget or rotate its credential. Wait for a UI decision instead of repeatedly opening the review.
+
+Health, duplicate, and prepared-set tools retain direct report previews. Proposal workflows and job polling return data. To visualize a playlist comparison or a job report, call `lexicon_show_report` with the returned report unchanged. This tool renders supported read-only report shapes, makes no library calls, and rejects change-plan payloads. Prepare and review a saved plan to approve a proposed change.
+
 Hosts without embedded MCP Apps support may advertise native MCP forms. For these clients the assistant calls `lexicon_review_change_plan` to open a native dialog containing the exact plan summary and an explicit approval checkbox. `lexicon_ui_status` reports the selected path. Hosts with neither capability retain text/JSON inspection but cannot apply protected changes. Agent installation configures MCP access; it cannot supply a missing renderer. Large results remain paginated, and bounded previews identify omitted rows.
 
 ## Review prompts
