@@ -40,8 +40,9 @@ it("separates compact planning, inspection, read-only preview, and client approv
     name: "lexicon_review_change_plan",
     arguments: { id: plan.id },
   });
-  expect(dialog).toHaveBeenCalledOnce();
-  expect(resultOf(reviewed).review.dismissed).toBe(true);
+  expect(dialog).not.toHaveBeenCalled();
+  expect(resultOf(reviewed).review.assistantMustAsk).toBe(true);
+  expect(resultOf(reviewed).review.serverDialogOpened).toBe(false);
   expect(resultOf(reviewed).review.nextTool).toBeUndefined();
   for (const stage of [planned, inspected, previewed, reviewed]) {
     expect(hasResource(stage)).toBe(false);
@@ -142,7 +143,7 @@ it("renders read-only workflow reports without issuing approval or accepting pla
   expect(f.writes()).toBe(0);
 });
 
-it("uses native client approval even when embedded Apps are also advertised", async () => {
+it("requires an assistant-sent question even when both Apps and MCP forms are advertised", async () => {
   const f = await connected(true, true, true);
   const dialog = vi.fn(async () => ({
     action: "accept" as const,
@@ -155,18 +156,20 @@ it("uses native client approval even when embedded Apps are also advertised", as
   });
   expect(dialog).not.toHaveBeenCalled();
   const plan = resultOf(pending);
-  expect(plan.review.mode).toBe("native-mcp-dialog");
-  const approved = await f.client.callTool({
+  expect(plan.review.mode).toBe("assistant-question");
+  const reviewed = await f.client.callTool({
     name: "lexicon_review_change_plan",
     arguments: { id: plan.id },
   });
-  expect(approved.isError).not.toBe(true);
-  expect(dialog).toHaveBeenCalledOnce();
-  expect(f.writes()).toBe(1);
-  expect(resultOf(approved).status).toBe("completed");
-  expect(hasResource(approved)).toBe(false);
-  expect(approved._meta?.["lexicon/preview"]).toBeUndefined();
-  expect(approved._meta?.["lexicon/approval"]).toBeUndefined();
+  expect(reviewed.isError).not.toBe(true);
+  expect(dialog).not.toHaveBeenCalled();
+  expect(f.writes()).toBe(0);
+  expect(resultOf(reviewed).status).toBe("pending");
+  expect(resultOf(reviewed).review.assistantMustAsk).toBe(true);
+  expect(resultOf(reviewed).review.serverDialogOpened).toBe(false);
+  expect(hasResource(reviewed)).toBe(false);
+  expect(reviewed._meta?.["lexicon/preview"]).toBeUndefined();
+  expect(reviewed._meta?.["lexicon/approval"]).toBeUndefined();
 });
 
 it.each([
@@ -174,7 +177,7 @@ it.each([
   { action: "decline" },
   { action: "accept", content: { approve: false } },
 ] as const)(
-  "leaves dismissed native reviews pending without requesting a retry for %j",
+  "never interprets an unused host-dialog response as user approval for %j",
   async (answer) => {
     const f = await connected(false, true, true);
     const dialog = vi.fn(async () => answer);
@@ -186,12 +189,11 @@ it.each([
     });
     expect(response.isError).not.toBe(true);
     expect(resultOf(response).status).toBe("pending");
-    expect(resultOf(response).review.dismissed).toBe(true);
+    expect(resultOf(response).review.dismissed).toBeUndefined();
+    expect(resultOf(response).review.assistantMustAsk).toBe(true);
+    expect(resultOf(response).review.serverDialogOpened).toBe(false);
     expect(resultOf(response).review.nextTool).toBeUndefined();
-    expect(resultOf(response).review.message).toContain(
-      "Do not cancel it or reopen",
-    );
-    expect(dialog).toHaveBeenCalledOnce();
+    expect(dialog).not.toHaveBeenCalled();
     expect(f.writes()).toBe(0);
   },
 );

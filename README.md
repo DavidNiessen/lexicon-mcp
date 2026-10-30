@@ -72,7 +72,7 @@ Then try a report or a reviewed change:
 
 > Prepare one plan to add an existing tag to selected tracks, show its preview, and request approval.
 
-Plan creation and inspection return compact text summaries. The assistant can show **one read-only preview widget**, then request approval separately. Review uses the client's native MCP form by default when advertised, or asks you to approve/cancel the exact plan in chat otherwise. If the native controls are missing or broken, tell the assistant; it can deliberately open a chat review for that saved plan. It must then ask for your explicit decision and relay your answer. The preview never applies changes by itself.
+Plan creation and inspection return compact text summaries. The assistant shows **one read-only preview widget**, then sends a separate approval question in chat. It should offer **Approve changes** and **Cancel** through its own native question controls when available, such as Claude Code’s `AskUserQuestion`; otherwise it asks a plain chat question. Only your explicit answer authorizes the exact saved plan. The preview never applies changes by itself.
 
 ## What you can do
 
@@ -98,18 +98,18 @@ Other MCP servers and saved library reports remain separate from registration. S
 
 ## Troubleshooting
 
-| Problem                               | Try this                                                                                                                                    |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npx` is not found                    | Install Node.js 24, reopen the terminal, then check `node --version` and `npx --version`.                                                   |
-| Client cannot connect                 | Keep Lexicon open, enable its Local API, then restart the MCP client. The default upstream is `http://127.0.0.1:48624/v1`.                  |
-| No widget appears                     | Ask the assistant to call `lexicon_ui_status`. Installation enables tools; the host supplies the renderer or native dialog.                 |
-| Old, blank, or white preview          | Update, restart the client, and ask to reopen the saved plan. Older chat messages can retain cached UI code.                                |
-| Existing registration conflicts       | Review a dry run and the [replacement instructions](docs/installation.md); use `--force` only when you intend to replace that registration. |
-| Preview is stale or a write times out | Inspect the saved plan and current data before proposing another change. Do not blindly retry.                                              |
+| Problem                               | Try this                                                                                                                                      |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npx` is not found                    | Install Node.js 24, reopen the terminal, then check `node --version` and `npx --version`.                                                     |
+| Client cannot connect                 | Keep Lexicon open, enable its Local API, then restart the MCP client. The default upstream is `http://127.0.0.1:48624/v1`.                    |
+| No widget appears                     | Ask the assistant to call `lexicon_ui_status`. The host supplies the renderer; approval is a separate question sent by the assistant in chat. |
+| Old, blank, or white preview          | Update, restart the client, and ask to reopen the saved plan. Older chat messages can retain cached UI code.                                  |
+| Existing registration conflicts       | Review a dry run and the [replacement instructions](docs/installation.md); use `--force` only when you intend to replace that registration.   |
+| Preview is stale or a write times out | Inspect the saved plan and current data before proposing another change. Do not blindly retry.                                                |
 
-Previews no longer use widget tool-call bridges, so Claude's display-only Code-tab widgets can show proposed values without disabled approval buttons. `lexicon_review_change_plan` defaults to native forms when advertised and chat review otherwise. When you report missing/broken native controls or request chat approval, the assistant can call it with `approval: "chat"` to open a fresh exact-plan chat review, then ask for your explicit approval or cancellation. Closing a native form alone never triggers this switch. Update and restart the client to load this flow. The installer removes the former `LEXICON_APPROVAL_UI` override while preserving other settings.
+Previews do not use widget tool-call bridges. After showing the proposed values, the assistant must send its own approval question in chat; it must not direct you to an approval button inside the preview. Lexicon MCP does not open a server-side approval dialog. If native chat question controls are unavailable, the assistant asks for an explicit text reply. Update and restart the client to load this flow. The installer removes the former `LEXICON_APPROVAL_UI` override while preserving other settings.
 
-`lexicon_get_change_plan` only inspects data. `lexicon_preview_change_plan` shows the read-only widget, and `lexicon_review_change_plan` requests approval. Approval belongs to the MCP client or the explicit chat fallback, never a separate review window inside Lexicon DJ.
+`lexicon_get_change_plan` only inspects data. `lexicon_preview_change_plan` shows the read-only widget, and `lexicon_review_change_plan` prepares the exact-plan question that the assistant must send. Approval happens through the assistant’s chat question, never inside the preview or a separate Lexicon DJ window.
 
 More: [installation and troubleshooting](docs/installation.md), including manual configuration, read-only mode, and authenticated loopback HTTP.
 

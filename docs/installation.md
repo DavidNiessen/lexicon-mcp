@@ -54,13 +54,13 @@ Compatible hosts can render visual change-plan, health-report, and prepared-set 
 
 The preview canvas is transparent and follows the host theme and style tokens. Both color schemes are declared before first paint. Widget state restores a bounded view after remounts when supported. Returning to a chat never applies or cancels a plan. If an older preview is blank, white, or still shows obsolete buttons, upgrade, restart the client, and ask to preview the existing saved plan; old chat messages can retain cached UI code.
 
-Approval is separate from rendering. By default, `lexicon_review_change_plan` requests a native MCP form when the connected client advertises one. The user checks the approval field and submits. Closing, declining, or leaving it unchecked keeps the plan pending; it never switches to chat automatically.
+Approval is separate from rendering. `lexicon_review_change_plan` prepares an exact-plan review and returns `mode: "assistant-question"`. The assistant must then send **Approve changes** and **Cancel** choices using its own native question tool when available—for example, Claude Code’s `AskUserQuestion`. If the client has no such controls, the assistant asks the same question in plain chat. Neither the read-only preview nor a server-side MCP form provides the approval buttons.
 
-When native forms are not advertised, review opens an exact-plan chat review. If advertised native controls are missing/broken, tell the assistant, or explicitly request chat approval. It can deliberately open the same saved plan with `approval: "chat"`, even when forms are advertised. Opening chat review does not approve changes: the assistant must present the plan, ask for your explicit approval/cancellation, and only then relay your actual reply through `lexicon_decide_change_plan`.
+After the user explicitly answers that question, the assistant relays the actual decision through `lexicon_decide_change_plan`. Preparing review or showing the preview does not approve anything. There is no native-form dismissal or automatic cancellation branch: without an answer, the plan stays pending.
 
-Chat reviews expire after 10 minutes and bind the plan ID/hash. A prior chat-specific review is required before any chat decision, including on clients advertising native forms. Read-only mode, stale source checks, and replay protections apply. The server cannot read the transcript; the assistant must faithfully relay actual user consent.
+Reviews expire after 10 minutes and bind the exact plan ID/hash. A prior review is required for both native question-button replies and plain chat replies. Read-only mode, stale source checks, and replay protections apply. The server cannot read the transcript; the assistant must faithfully relay actual user consent.
 
-`lexicon_ui_status` reports the current client's capabilities and selected review path. Installation supplies neither a renderer nor native forms. The former `LEXICON_APPROVAL_UI` environment override is ignored and removed from managed registrations during upgrades; other environment settings are preserved. Old `approvalUi` configuration fields remain accepted for compatibility but no longer affect routing.
+`lexicon_ui_status` reports preview capabilities and the assistant-question approval flow. Installation supplies neither a renderer nor the assistant’s native question tool. MCP form-elicitation capability does not prove that a question was shown. The former `LEXICON_APPROVAL_UI` override is ignored and removed from managed registrations during upgrades; other environment settings are preserved. Old `approvalUi` configuration fields remain accepted for compatibility.
 
 ## Manual configuration and development
 
@@ -98,18 +98,18 @@ The companion plugin and native executable downloads have been removed. If you p
 
 ## Troubleshooting
 
-| Symptom                     | Action                                                                                                                                           |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npx` is not found          | Install Node.js 24, reopen the terminal, and check `node --version` and `npx --version`.                                                         |
-| Download returns 404        | Copy the exact release command; replace both `VERSION` placeholders.                                                                             |
-| Scoped package returns 404  | Use the GitHub tarball command; the package name is not currently published to npm.                                                              |
-| Conflicting registration    | Preview and use `--force` if replacement is intended.                                                                                            |
-| Invalid agent configuration | Repair the file; malformed configuration is never overwritten.                                                                                   |
-| Connection refused          | Start Lexicon, enable its API, and run `doctor`.                                                                                                 |
-| Agent cannot find Node      | Rerun installation after Node path changes, then restart the agent.                                                                              |
-| Preview is text only        | Call `lexicon_preview_change_plan` for the saved plan. Rendering depends on the host; native approval or the explicit chat fallback is separate. |
-| HTTP unauthorized           | Match server and client bearer tokens.                                                                                                           |
-| Stale plan                  | Inspect changed data and create a fresh preview.                                                                                                 |
-| Mutation timed out          | Inspect current data and saved outcomes before retrying.                                                                                         |
+| Symptom                     | Action                                                                                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npx` is not found          | Install Node.js 24, reopen the terminal, and check `node --version` and `npx --version`.                                                    |
+| Download returns 404        | Copy the exact release command; replace both `VERSION` placeholders.                                                                        |
+| Scoped package returns 404  | Use the GitHub tarball command; the package name is not currently published to npm.                                                         |
+| Conflicting registration    | Preview and use `--force` if replacement is intended.                                                                                       |
+| Invalid agent configuration | Repair the file; malformed configuration is never overwritten.                                                                              |
+| Connection refused          | Start Lexicon, enable its API, and run `doctor`.                                                                                            |
+| Agent cannot find Node      | Rerun installation after Node path changes, then restart the agent.                                                                         |
+| Preview is text only        | Call `lexicon_preview_change_plan` for the saved plan. Rendering depends on the host; the assistant sends the approval question separately. |
+| HTTP unauthorized           | Match server and client bearer tokens.                                                                                                      |
+| Stale plan                  | Inspect changed data and create a fresh preview.                                                                                            |
+| Mutation timed out          | Inspect current data and saved outcomes before retrying.                                                                                    |
 
 Redact private paths, titles, identifiers, and tokens in bug reports. Include versions and a synthetic reproduction.

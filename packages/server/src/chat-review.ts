@@ -24,7 +24,7 @@ export type ChatDecision = {
   confirmed: true;
 };
 
-/** A plan-bound chat fallback. The caller must enforce client capability policy.
+/** A plan-bound assistant question using native chat choices or a plain reply.
  * The assistant relays actual user consent; this server cannot read the transcript.
  */
 export class ChatReview {

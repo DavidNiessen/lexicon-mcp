@@ -27,7 +27,7 @@ it("keeps inspection routing before large snapshots without opening UI or changi
   expect((response.structuredContent as any).result.operationCount).toBe(1);
   expect(text.slice(0, 2000)).toContain('"uiOpenedByThisCall":false');
   expect(text.slice(0, 2000)).toContain(
-    '"nativeReviewTool":"lexicon_review_change_plan_native"',
+    '"openReviewTool":"lexicon_review_change_plan"',
   );
   expect(text.slice(0, 2000)).toContain("this call opened no review UI");
   expect(JSON.parse(text).result).toEqual(
@@ -56,7 +56,7 @@ it.each([
   { inline: true, form: true, readOnly: true, open: false, native: false },
 ])(
   "provides conditional review routes without automatically reopening for %j",
-  ({ inline, form, readOnly, open, native }) => {
+  ({ inline, form, readOnly, open }) => {
     const review = planReview(
       "lexicon_get_change_plan",
       "pending",
@@ -70,8 +70,6 @@ it.each([
     expect(review.openReviewTool).toBe(
       open ? "lexicon_review_change_plan" : undefined,
     );
-    expect(review.nativeReviewTool).toBe(
-      native ? "lexicon_review_change_plan_native" : undefined,
-    );
+    expect(review.serverDialogOpened).toBe(false);
   },
 );

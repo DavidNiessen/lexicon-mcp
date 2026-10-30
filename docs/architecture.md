@@ -29,9 +29,9 @@ The installer adapts selected agents' native configuration formats, preserves un
 
 ## Preview boundary
 
-MCP UI resources are read-only presentations. `lexicon_preview_change_plan` is the sole plan-widget renderer; it uses the saved plan and has no write controls, credentials, or tool-call bridge. The renderer works independently of approval. Automatic review prefers advertised native MCP forms, using a signed continuation bound to the exact plan and request. A deliberate per-review `approval: "chat"` option handles user-reported missing/broken native controls or an explicit request for chat approval.
+MCP UI resources are read-only presentations. `lexicon_preview_change_plan` is the sole plan-widget renderer; it uses the saved plan and has no write controls, credentials, or tool-call bridge. After the preview, `lexicon_review_change_plan` prepares an assistant-question response. The assistant sends its own native Approve changes/Cancel question when that client tool is available, or asks a plain chat question. The server never opens a separate approval dialog.
 
-When automatic review finds no native forms, or chat review is deliberately requested, `chat-review.ts` stores a short-lived review marker in `chat-reviews`. A later explicit chat decision binds the plan ID/hash and uses the existing internal approval manager, preserving stale/read-only/replay guards. Advertising forms does not authorize a direct chat decision: a prior exact-plan chat review is required. The assistant relays actual chat consent; the server cannot inspect the transcript. Dismissing a native form never starts a chat review automatically. Serialized decision records survive fresh HTTP server instances and prevent duplicate writes.
+`chat-review.ts` stores a short-lived review marker in `chat-reviews` for every review. A later explicit decision binds the plan ID/hash and uses the existing internal approval manager, preserving stale/read-only/replay guards. The assistant relays the user’s actual button selection or chat reply; the server cannot inspect the transcript. Advertising MCP form elicitation does not show a question or authorize a decision. Serialized decision records survive fresh HTTP server instances and prevent duplicate writes.
 
 Planning and inspection return compact summaries and bounded detail pages, avoiding large before snapshots in model-visible output. Full authoritative plans remain in storage. `presentation.ts` separates summaries, display, and review guidance. Read-only report display rejects plan-shaped data in favor of the dedicated saved-plan preview. The component declares both color schemes before first paint, follows host styles, and keeps its canvas transparent.
 
@@ -39,7 +39,7 @@ Planning and inspection return compact summaries and bounded detail pages, avoid
 
 - Use official Lexicon APIs; avoid database writes and unattended UI automation.
 - Keep stdio as the default and authenticate loopback HTTP.
-- Require a saved plan for every persistent library write. Prefer native forms automatically; allow deliberate chat review for missing/broken controls or an explicit user request.
+- Require a saved plan for every persistent library write and an explicit answer to the assistant’s approval question.
 - Ship a Node package with an interactive selected-agent installer.
 - Generate dependency license notices and a build/runtime component inventory.
 - Publish prereleases for successful main builds; manually select stable releases.

@@ -8,7 +8,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { Runtime } from "../src/runtime.js";
 import { createServer } from "../src/mcp.js";
 
-it("automatically requests native approval through the legacy handshake even when Claude advertises Apps", async () => {
+it("requests an assistant question through the legacy handshake without opening the advertised MCP form", async () => {
   const dataDir = await mkdtemp(join(tmpdir(), "lexicon-native-legacy-"));
   const runtime = new Runtime({
     dataDir,
@@ -61,14 +61,42 @@ it("automatically requests native approval through the legacy handshake even whe
       arguments: { id: plan.id },
     });
     expect(response.isError).not.toBe(true);
-    expect(dialog).toHaveBeenCalledOnce();
-    expect(writes).toBe(1);
-    expect((response.structuredContent as any).result.status).toBe("completed");
+    expect(dialog).not.toHaveBeenCalled();
+    expect(writes).toBe(0);
+    expect((response.structuredContent as any).result.status).toBe("pending");
+    expect((response.structuredContent as any).result.review).toMatchObject({
+      mode: "assistant-question",
+      assistantMustAsk: true,
+      serverDialogOpened: false,
+    });
     expect(response._meta?.["lexicon/approval"]).toBeUndefined();
     expect(response._meta?.["lexicon/preview"]).toBeUndefined();
     expect(
       (response.content as any[]).some((item) => item.type === "resource"),
     ).toBe(false);
+    const answered = await client.callTool({
+      name: "lexicon_decide_change_plan",
+      arguments: {
+        id: plan.id,
+        hash: plan.hash,
+        decision: "apply",
+        confirmed: true,
+      },
+    });
+    expect(answered.isError).not.toBe(true);
+    expect((answered.structuredContent as any).result.status).toBe("completed");
+    const replay = await client.callTool({
+      name: "lexicon_decide_change_plan",
+      arguments: {
+        id: plan.id,
+        hash: plan.hash,
+        decision: "apply",
+        confirmed: true,
+      },
+    });
+    expect((replay.structuredContent as any).result.status).toBe("completed");
+    expect(dialog).not.toHaveBeenCalled();
+    expect(writes).toBe(1);
   } finally {
     await client.close();
     await server.close();

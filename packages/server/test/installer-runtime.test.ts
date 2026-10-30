@@ -78,7 +78,7 @@ it.each(["cursor", "claude-code"])(
           arguments: {},
         });
         expect((status.structuredContent as any).result.mode).toBe(
-          "native-mcp-dialog",
+          "assistant-question",
         );
         const review = tools.tools.find(
           (tool) => tool.name === "lexicon_review_change_plan",

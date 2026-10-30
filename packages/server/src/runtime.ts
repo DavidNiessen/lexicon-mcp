@@ -285,7 +285,7 @@ export class Runtime {
         reviewRequired: true,
         plan: await this.plans.create(await this.expandSelections([op])),
         instruction:
-          "Show the read-only preview, then call lexicon_review_change_plan to request explicit user approval through native client controls or chat when those controls are unavailable. Keep related edits in one plan; do not execute them individually.",
+          "Show the read-only preview, then prepare review. YOU must send an Approve changes/Cancel question using your own chat question tool or plain chat. Wait for the user before relaying their decision. The preview has no approval controls. Keep all related edits in one plan.",
       };
     return this.store.exclusive(async () => {
       const result = await this.execute(await this.prepare(op));
@@ -326,7 +326,7 @@ export const managementTools = [
   {
     name: "lexicon_get_change_plan",
     description:
-      "Inspect a bounded page of saved plan changes and outcomes. This does not request approval. Show the read-only preview and call lexicon_review_change_plan to request native client approval controls, or explicit chat approval when controls are unavailable. Never approve for the user or direct them to Lexicon DJ for this review.",
+      "Inspect a bounded page of changes and outcomes. This does not request approval. Show the read-only preview, prepare review, then send your OWN Approve changes/Cancel question in chat. Never direct the user to approval buttons in the preview or approve for them.",
     inputSchema: z.object({
       id,
       offset: z.number().int().nonnegative().optional(),

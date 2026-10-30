@@ -12,7 +12,7 @@ DJs use a local LLM client to inspect and manage an existing Lexicon library.
 
 ## Product Purpose
 
-Preview surfaces expose proposed changes, library reports, and prepared sets. Approval is a separate native MCP form or an explicit chat exchange when native forms are unavailable.
+Preview surfaces expose proposed changes, library reports, and prepared sets. Approval is a separate question sent by the assistant in chat, using its own native choices when available or an explicit text reply otherwise.
 
 ## Operating Context
 
@@ -20,7 +20,7 @@ The interface is an embedded MCP Apps or MCP-UI resource. It shares tool results
 
 ## Capabilities and Constraints
 
-Every preview is read-only. Filtering and disclosure work locally; the widget has no Apply/Cancel buttons, write credentials, or tool-call bridge. Automatic approval prefers advertised native MCP forms and otherwise opens chat review. When users report missing/broken native controls or explicitly request chat approval, the assistant can deliberately open an exact-plan chat review, then ask for and faithfully relay the user's explicit decision. Dismissing a native form never triggers this switch automatically. The server cannot inspect the chat transcript. All persistent library writes require a plan, including single-track edits. Library metadata is untrusted. No external scripts, fonts, images, or network calls are needed to render a preview.
+Every preview is read-only. Filtering and disclosure work locally; the widget has no Apply/Cancel buttons, write credentials, or tool-call bridge. Review prepares an exact-plan question that the assistant must send using its own native Approve changes/Cancel controls when available, such as Claude Code’s AskUserQuestion, or as a plain chat question. The server does not open an approval dialog. The assistant faithfully relays the user’s explicit answer; the server cannot inspect the transcript. All persistent library writes require a plan, including single-track edits. Library metadata is untrusted. No external scripts, fonts, images, or network calls are needed to render a preview.
 
 ## Product Principles
 

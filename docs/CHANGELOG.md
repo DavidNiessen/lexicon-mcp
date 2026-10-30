@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Assistant-sent approval questions
+
+- Make review prepare a question the assistant must send in chat using its own native Approve changes/Cancel choices when available, or a plain chat question otherwise.
+- Remove server-side MCP approval elicitation from the production flow; advertised form capability cannot imply that a question appeared or was dismissed.
+- Route every explicit answer through the same exact-plan review marker and decision checks; keep previews read-only and preserve single-edit, stale-plan, expiry, read-only, and replay protections.
+- Retain old review names and approval arguments only as compatibility aliases. Earlier entries below describe superseded experimental flows.
+
 ## Unreleased — Deliberate chat review for unavailable native controls
 
 - Add `approval: "auto" | "chat"` to ordinary review, preserving native forms as the automatic default when advertised.

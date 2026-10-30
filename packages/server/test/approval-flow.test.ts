@@ -22,7 +22,7 @@ const decide = (
     },
   });
 
-it("offers chat approval when native controls are unavailable, without applying during review", async () => {
+it("instructs the assistant to send an approval question without applying during review", async () => {
   const f = await connected(true);
   const plan = await f.runtime.plans.create(operations);
   const issue = vi.spyOn(f.runtime.approvals, "issue");
@@ -32,13 +32,13 @@ it("offers chat approval when native controls are unavailable, without applying 
   });
   expect(response.isError).not.toBe(true);
   expect(resultOf(response).review).toMatchObject({
-    mode: "chat-confirmation",
-    chatConfirmationRequired: true,
+    mode: "assistant-question",
+    assistantMustAsk: true,
+    serverDialogOpened: false,
     decisionTool: "lexicon_decide_change_plan",
   });
-  expect(resultOf(response).review.message).toContain(
-    "wait for their explicit reply",
-  );
+  expect(resultOf(response).review.question.prompt).toBeTypeOf("string");
+  expect(resultOf(response).review.message).toMatch(/wait/i);
   expect(response._meta?.["lexicon/approval"]).toBeUndefined();
   expect(issue).not.toHaveBeenCalled();
   expect(f.writes()).toBe(0);
@@ -47,7 +47,7 @@ it("offers chat approval when native controls are unavailable, without applying 
     arguments: {},
   });
   expect(resultOf(status)).toMatchObject({
-    mode: "chat-confirmation",
+    mode: "assistant-question",
     chatApprovalTool: "lexicon_decide_change_plan",
   });
 });
@@ -89,6 +89,8 @@ it("applies a reviewed chat decision once across concurrent and repeated calls",
   expect((await decide(f, plan, "cancel")).isError).toBe(true);
   expect(f.writes()).toBe(1);
   expect(issue).toHaveBeenCalledOnce();
+  const grant = await issue.mock.results[0]!.value;
+  expect(JSON.stringify(responses)).not.toContain(grant.token);
 });
 
 it("cancels only after an explicit reviewed chat decision and never writes the library", async () => {
@@ -130,22 +132,26 @@ it("blocks chat approval in read-only mode", async () => {
   expect(f.writes()).toBe(0);
 });
 
-it("does not let a client with native forms bypass native approval using chat decisions", async () => {
+it("does not open an MCP form or apply until the assistant relays the user answer", async () => {
   const f = await connected(true, true, true);
   const plan = await f.runtime.plans.create(operations);
   const dialog = vi.fn(async () => ({ action: "cancel" as const }));
   f.client.setRequestHandler("elicitation/create", dialog);
-  await f.client.callTool({
+  expect((await decide(f, plan)).isError).toBe(true);
+  const review = await f.client.callTool({
     name: "lexicon_review_change_plan",
     arguments: { id: plan.id },
   });
-  const response = await decide(f, plan);
-  expect(response.isError).toBe(true);
-  expect(dialog).toHaveBeenCalledOnce();
+  expect(resultOf(review).review.assistantMustAsk).toBe(true);
+  expect(dialog).not.toHaveBeenCalled();
   expect(f.writes()).toBe(0);
+  const response = await decide(f, plan);
+  expect(response.isError).not.toBe(true);
+  expect(resultOf(response).status).toBe("completed");
+  expect(f.writes()).toBe(1);
 });
 
-it("can switch a client advertising forms to chat review when its native controls are unavailable", async () => {
+it("uses the same assistant-question flow for an older explicit chat-review request", async () => {
   const f = await connected(true, true, true);
   const plan = await f.runtime.plans.create(operations);
   const dialog = vi.fn(async () => ({ action: "cancel" as const }));
@@ -155,8 +161,8 @@ it("can switch a client advertising forms to chat review when its native control
     name: "lexicon_review_change_plan",
     arguments: { id: plan.id, approval: "chat" },
   });
-  expect(resultOf(review).review.mode).toBe("chat-confirmation");
-  expect(resultOf(review).review.chatConfirmationRequired).toBe(true);
+  expect(resultOf(review).review.mode).toBe("assistant-question");
+  expect(resultOf(review).review.assistantMustAsk).toBe(true);
   expect(dialog).not.toHaveBeenCalled();
   expect(f.writes()).toBe(0);
   const applied = await decide(f, plan);

@@ -1,6 +1,6 @@
 import { previewFor } from "./ui/model.js";
 
-/** Only these read-only results or explicit display tools create a widget. */
+/** A preview renders data; approval is a separate assistant-sent chat question. */
 export const renderTools = new Set([
   "lexicon_preview_change_plan",
   "lexicon_show_report",
@@ -15,6 +15,7 @@ export function planReview(
   capabilities: { inline: boolean; form: boolean },
   readOnly: boolean,
   dismissed: boolean,
+  scope?: { id: string; operationCount: number },
 ) {
   if (status !== "pending") return undefined;
   const inspecting = tool === "lexicon_get_change_plan";
@@ -28,53 +29,63 @@ export function planReview(
         ? "lexicon_review_change_plan"
         : "lexicon_preview_change_plan"
       : undefined;
+  const count = scope?.operationCount;
+  const prompt =
+    count === undefined
+      ? "Apply the changes shown in this saved plan's preview?"
+      : `Apply the ${count} library ${count === 1 ? "change" : "changes"} shown in this saved plan's preview?`;
   let message: string;
-  if (dismissed)
+  if (readOnly)
+    message = "The server is read-only; applying changes is blocked.";
+  else if (dismissed)
     message =
-      "Approval was not granted. The plan is still pending; no changes were applied. Do not cancel it or reopen the dialog automatically. Wait for the user to request another review.";
-  else if (readOnly)
-    message = "The server is in read-only mode; applying changes is blocked.";
+      "No answer was received. Leave the plan pending and wait; never infer approval or cancellation.";
   else if (inspecting)
     message =
-      "Data-only inspection: this call opened no review UI. Show the saved plan's read-only preview when requested, then use lexicon_review_change_plan for native client approval or chat confirmation. Do not infer a visible dialog from pending status or reopen automatically.";
+      "Data-only inspection: this call opened no review UI and sent no approval question. Show the saved plan's preview when requested, then call lexicon_review_change_plan.";
   else if (next)
-    message = `Call ${next} next. The preview is read-only; approval happens separately in the chat client.`;
-  else if (capabilities.form)
-    message =
-      "A native approval form was requested in the chat client. Wait for the user's decision. Do not claim it is visible unless confirmed, or reopen a dismissed form automatically.";
+    message = `Call ${next} next. The preview is read-only and has no approval buttons.`;
   else
     message =
-      "Native approval controls are unavailable. Summarize this exact saved plan, ask the user to approve or cancel it in chat, and wait for their explicit reply. Only then relay their decision with lexicon_decide_change_plan, the reviewed ID/hash and confirmed=true. Never infer consent or treat the original edit request as approval.";
+      "YOU must now send the approval question to the user using your OWN native question tool (Claude Code: AskUserQuestion), with Approve changes and Cancel choices. If that tool is unavailable, ask the question in plain chat. This MCP call opened NO dialog and sent NO question. Never tell the user to click the preview. Wait for their actual reply, then call lexicon_decide_change_plan with this reviewed ID/hash and their decision. A tool permission prompt, silence, or the original edit request is not approval.";
   return {
-    mode: readOnly
-      ? "read-only"
-      : capabilities.form
-        ? "native-mcp-dialog"
-        : "chat-confirmation",
-    ...(dismissed ? { dismissed: true } : next ? { nextTool: next } : {}),
+    mode: readOnly ? "read-only" : "assistant-question",
+    serverDialogOpened: false,
+    ...(next ? { nextTool: next } : {}),
     ...(inspecting
       ? {
           inspectionOnly: true,
           uiOpenedByThisCall: false,
           ...(!readOnly
-            ? {
-                openReviewTool: "lexicon_review_change_plan",
-                ...(capabilities.form
-                  ? { nativeReviewTool: "lexicon_review_change_plan_native" }
-                  : {}),
-              }
+            ? { openReviewTool: "lexicon_review_change_plan" }
             : {}),
         }
       : {}),
-    ...(!readOnly && !capabilities.form && opening && !dismissed
+    ...(!readOnly && opening && !dismissed
       ? {
-          chatConfirmationRequired: true,
+          assistantMustAsk: true,
           decisionTool: "lexicon_decide_change_plan",
+          question: {
+            header: "Library edits",
+            prompt,
+            ...(scope ? { planId: scope.id } : {}),
+            options: [
+              {
+                label: "Approve changes",
+                description: "Apply every change in this exact saved plan.",
+                decision: "apply",
+              },
+              {
+                label: "Cancel",
+                description: "Cancel this plan without changing the library.",
+                decision: "cancel",
+              },
+            ],
+          },
         }
       : {}),
     approvalLocation:
-      "Native chat-client controls, or explicit chat confirmation if unavailable",
-    uiVisibility: "not-verified-by-server",
+      "A question sent by the assistant in chat, never the preview",
     message,
   };
 }
@@ -91,7 +102,7 @@ export function reportPreview(report: Record<string, unknown>) {
   }
   if (planLike(report))
     throw new Error(
-      "Change proposals must become saved plans and use lexicon_review_change_plan; report previews cannot approve changes.",
+      "Change proposals must become saved plans and use lexicon_preview_change_plan; reports cannot approve changes.",
     );
   const preview = previewFor(report);
   if (preview?.plan)
