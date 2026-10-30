@@ -1,0 +1,14 @@
+name: Feature request
+description: Suggest a library workflow or documented integration.
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What are you trying to do?
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Example input and desired result
+      description: Use synthetic tracks and playlists.

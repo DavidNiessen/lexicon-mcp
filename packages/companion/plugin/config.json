@@ -1,0 +1,33 @@
+{
+  "id": "dev.niessen.lexicon-mcp",
+  "author": {
+    "name": "DavidNiessen",
+    "email": "david@niessen.dev",
+    "discordUsername": "david.niessen"
+  },
+  "actions": [
+    {
+      "id": "inspect-selection",
+      "name": "MCP: Inspect Selection",
+      "description": "Report selected track and playlist IDs for your assistant.",
+      "config": {
+        "permissions": {
+          "track": { "read": ["selected"] },
+          "playlist": { "read": ["selected"] }
+        }
+      }
+    },
+    {
+      "id": "inspect-player",
+      "name": "MCP: Inspect Player and Queue",
+      "description": "Report the player and queue without changing playback.",
+      "config": { "permissions": {} }
+    },
+    {
+      "id": "setup-help",
+      "name": "MCP: Setup Help",
+      "description": "Explain how to connect a local MCP client to Lexicon.",
+      "config": { "permissions": {} }
+    }
+  ]
+}
