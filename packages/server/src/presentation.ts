@@ -15,6 +15,7 @@ export function planReview(
   capabilities: { inline: boolean; form: boolean },
   readOnly: boolean,
   dismissed: boolean,
+  nativePreferred = false,
 ) {
   if (status !== "pending") return undefined;
   const inspecting = tool === "lexicon_get_change_plan";
@@ -32,9 +33,9 @@ export function planReview(
       "Approval was not granted. The plan is still pending; no changes were applied. Do not cancel it or reopen the dialog automatically. Wait for the user to request another review.";
   else if (readOnly)
     message = "The server is in read-only mode; applying changes is blocked.";
-  else if (native && !capabilities.form)
+  else if ((native || nativePreferred) && !capabilities.form)
     message =
-      "This client does not advertise native MCP form dialogs. The saved plan remains pending. Use a client with working widget actions or native MCP forms; do not ask for chat approval or claim a dialog is visible.";
+      "This client does not advertise native MCP form dialogs. Native approval is selected, so this connection cannot open approval. The saved plan remains pending. Use a client with native forms; do not ask for chat approval or claim a dialog is visible.";
   else if (inspecting)
     message =
       "Data-only inspection: this call opened no review UI and does not prove any approval UI is open. When the user asks to open review, request it with lexicon_review_change_plan in the MCP client, then wait. For disabled buttons or IPC failures, use nativeReviewTool when available. Never tell the user to open a dialog inside Lexicon DJ. Otherwise preserve the existing preview; do not reopen it automatically.";

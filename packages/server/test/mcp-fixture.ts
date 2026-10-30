@@ -16,7 +16,12 @@ afterEach(async () => {
   for (const fn of cleanup.reverse()) await fn();
   cleanup.length = 0;
 });
-export async function connected(inline = false, modern = true, form = false) {
+export async function connected(
+  inline = false,
+  modern = true,
+  form = false,
+  approvalUi?: "auto" | "native",
+) {
   const dataDir = await mkdtemp(join(tmpdir(), "lexicon-mcp-approval-"));
   cleanup.push(() => rm(dataDir, { recursive: true, force: true }));
   const runtime = new Runtime({
@@ -24,6 +29,7 @@ export async function connected(inline = false, modern = true, form = false) {
     baseUrl: "http://127.0.0.1:1/v1",
     port: 48625,
     readOnly: false,
+    approvalUi,
     httpToken: "a".repeat(64),
   });
   await runtime.initialize();

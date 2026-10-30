@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Automatic native approval in Claude
+
+- Configure Claude Desktop/Code installations and upgrades to select native MCP approval automatically.
+- Route the ordinary review tool through native forms without a widget template or an extra fallback call; keep read-only previews and other agents' embedded approvals.
+- Expose the selected approval mode in UI status and leave unsupported, dismissed, unchecked, and read-only plans blocked or pending.
+
 ## Unreleased — Inspection guidance
 
 - Put approval routing before large saved-plan snapshots so truncation retains the instructions.

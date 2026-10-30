@@ -267,6 +267,39 @@ it("preserves user-added read-only environment settings when updating an owned s
       .LEXICON_HTTP_TOKEN,
   ).toBe("synthetic-cursor-token");
 });
+it.each(["win32", "darwin"] as const)(
+  "upgrades Claude registrations to native approval on %s without losing other settings",
+  async (platform) => {
+    const options = { ...(await fixture()), platform };
+    const agents = ["claude-desktop", "claude-code"];
+    await runInstaller({ ...options, agents });
+    for (const target of agentTargets("user", options).filter((target) =>
+      agents.includes(target.id),
+    )) {
+      const config = parseJsonc(await readFile(target.path, "utf8"));
+      config.mcpServers.lexicon.env = {
+        LEXICON_READ_ONLY: "true",
+        CUSTOM_SETTING: "keep",
+      };
+      config.mcpServers.other = { command: "keep" };
+      await writeFile(target.path, JSON.stringify(config));
+    }
+    await runInstaller({ ...options, agents });
+    for (const target of agentTargets("user", options).filter((target) =>
+      agents.includes(target.id),
+    )) {
+      const config = parseJsonc(await readFile(target.path, "utf8"));
+      expect(config.mcpServers.lexicon.env).toEqual({
+        LEXICON_READ_ONLY: "true",
+        CUSTOM_SETTING: "keep",
+        LEXICON_APPROVAL_UI: "native",
+      });
+      expect(config.mcpServers.other).toEqual({ command: "keep" });
+    }
+    const repeat = await runInstaller({ ...options, agents });
+    expect(repeat.changes.every((change) => !change.changed)).toBe(true);
+  },
+);
 it("refuses unsupported scope/agent selections and unsafe TOML layouts", async () => {
   const options = await fixture();
   await expect(

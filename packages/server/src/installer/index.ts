@@ -151,6 +151,12 @@ export async function runInstaller(
       command: process.execPath,
       args: [runtimePath, "serve", "--transport", "stdio"],
     };
+    // Claude's Code surface can render Apps without forwarding their button calls.
+    if (target.id === "claude-desktop" || target.id === "claude-code")
+      entry.env = {
+        ...((entry.env ?? {}) as Record<string, unknown>),
+        LEXICON_APPROVAL_UI: "native",
+      };
     if (
       existing !== undefined &&
       !same(existing, entry) &&
