@@ -37,7 +37,7 @@ export function planReview(
       "This client does not advertise native MCP form dialogs. The saved plan remains pending. Use a client with working widget actions or native MCP forms; do not ask for chat approval or claim a dialog is visible.";
   else if (inspecting)
     message =
-      "This inspects saved plan data only and does not prove any approval UI is open. If the user reports disabled Apply/Cancel or an IPC failure, use the advertised native fallback tool when available. Otherwise preserve the current preview and do not reopen it automatically.";
+      "Data-only inspection: this call opened no review UI and does not prove any approval UI is open. When the user asks to open review, request it with lexicon_review_change_plan in the MCP client, then wait. For disabled buttons or IPC failures, use nativeReviewTool when available. Never tell the user to open a dialog inside Lexicon DJ. Otherwise preserve the existing preview; do not reopen it automatically.";
   else if (next)
     message =
       "Call lexicon_review_change_plan once to display this saved plan's approval UI, then wait. Do not ask for a chat reply.";
@@ -63,6 +63,20 @@ export function planReview(
       : next
         ? { nextTool: "lexicon_review_change_plan" }
         : {}),
+    ...(inspecting
+      ? {
+          inspectionOnly: true,
+          uiOpenedByThisCall: false,
+          ...(!readOnly && (capabilities.inline || capabilities.form)
+            ? {
+                openReviewTool: "lexicon_review_change_plan",
+                ...(capabilities.form
+                  ? { nativeReviewTool: "lexicon_review_change_plan_native" }
+                  : {}),
+              }
+            : {}),
+        }
+      : {}),
     ...(capabilities.inline && capabilities.form && !native && !readOnly
       ? {
           fallbackTool: "lexicon_review_change_plan_native",

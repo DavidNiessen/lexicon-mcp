@@ -63,7 +63,7 @@ export function createServer(runtime: Runtime) {
     {
       name: "lexicon_review_change_plan",
       description:
-        "Open the saved plan's only approval widget or native MCP dialog. Call once after planning, then wait for the user's UI action. Do not call get/review again or reopen dismissed dialogs unless the user asks. Only explicit UI approval can apply changes.",
+        "Request this saved plan's approval UI in the MCP chat client, not inside Lexicon DJ. Call when the user asks to open review; lexicon_get_change_plan does not open it. Call once after planning, then wait for the user's UI action. For disabled widget buttons, use the advertised native review tool. Do not reopen dismissed reviews unless asked. Never approve for the user.",
       inputSchema: z.object({ id: z.string().uuid() }),
       mutating: true,
     },
@@ -106,10 +106,7 @@ export function createServer(runtime: Runtime) {
     server.registerTool(
       tool.name,
       {
-        description:
-          tool.name === "lexicon_get_change_plan"
-            ? "Inspect an existing plan's current state and outcomes as data only. This does not open or refresh its widget. Do not reopen an existing review unless the user asks."
-            : tool.description,
+        description: tool.description,
         inputSchema: tool.inputSchema,
         outputSchema: z.object({ result: z.unknown() }),
         ...(tool.name === "lexicon_confirm_change_plan"
@@ -228,7 +225,11 @@ export function createServer(runtime: Runtime) {
               ...result,
               instruction: reviewInfo?.message ?? "Review is complete.",
             };
-          if (reviewInfo) result = { ...result, review: reviewInfo };
+          // Keep routing ahead of large snapshots when clients truncate tool text.
+          if (reviewInfo)
+            result = Object.assign({ review: reviewInfo }, result, {
+              review: reviewInfo,
+            });
           if (
             !plan &&
             [

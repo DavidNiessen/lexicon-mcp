@@ -109,6 +109,8 @@ Other MCP servers and saved library reports remain separate from registration. S
 
 If a Claude widget has disabled buttons or shows **“IPC not available for MCP tool call”**, ask the assistant to check `lexicon_ui_status` and use `lexicon_review_change_plan_native` for the existing plan when `nativeReviewTool` is advertised. This opens a native MCP form in the chat client without using the widget's button bridge. No native form support means another UI-capable client is needed. The IPC error matches an [upstream Code-tab report](https://github.com/anthropics/claude-ai-mcp/issues/1181); rendering a preview does not prove its buttons work. Approval happens in the MCP client, not in a separate Lexicon application dialog.
 
+If the assistant says to open a dialog inside Lexicon DJ after only using `lexicon_get_change_plan`, it has inspected the saved plan without opening approval. Ask it to call the review tool with that plan ID. The tool history should show `lexicon_review_change_plan` or the supported native alternative before you are asked to use the approval controls.
+
 More: [installation and troubleshooting](docs/installation.md), including manual configuration, read-only mode, and authenticated loopback HTTP.
 
 ## Documentation

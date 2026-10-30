@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Inspection guidance
+
+- Put approval routing before large saved-plan snapshots so truncation retains the instructions.
+- Explicitly mark inspection as opening no UI and return supported review tool names without automatically reopening anything.
+- Clarify inspection and review tool descriptions so assistants request approval in the MCP client instead of directing users to Lexicon DJ.
+
 ## Unreleased — Native review fallback
 
 - Add `lexicon_review_change_plan_native` for a saved plan when embedded widget buttons cannot forward actions.

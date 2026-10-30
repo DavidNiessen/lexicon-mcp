@@ -303,7 +303,8 @@ export const managementTools = [
   },
   {
     name: "lexicon_get_change_plan",
-    description: "Read an existing preview and per-operation outcomes.",
+    description:
+      "Inspect saved plan data and outcomes only. This does not open any approval UI. When the user asks to open review, call lexicon_review_change_plan, or lexicon_review_change_plan_native for disabled widget buttons when advertised. Approval belongs to the MCP client; never tell the user to open a dialog inside Lexicon DJ. Never approve for the user.",
     inputSchema: z.object({ id }),
   },
   {
