@@ -50,6 +50,8 @@ export class LexiconClient {
   private readonly readRetries: number;
   private readonly fetcher: typeof globalThis.fetch;
   private writeTail: Promise<unknown> = Promise.resolve();
+  private activeReads = 0;
+  private readonly waitingReads: Array<() => void> = [];
   constructor(options: LexiconClientOptions = {}) {
     this.baseUrl = (options.baseUrl ?? "http://127.0.0.1:48624/v1").replace(
       /\/$/,
@@ -87,10 +89,23 @@ export class LexiconClient {
     )
       return Promise.reject(new Error("Invalid API path"));
     const run = () => this.execute<T>(method, path, input, signal);
-    if (method === "GET") return run();
+    if (method === "GET") return this.read(run);
     const result = this.writeTail.then(run, run);
     this.writeTail = result.catch(() => undefined);
     return result;
+  }
+
+  private async read<T>(run: () => Promise<T>): Promise<T> {
+    if (this.activeReads >= 4) {
+      await new Promise<void>((resolve) => this.waitingReads.push(resolve));
+    } else this.activeReads++;
+    try {
+      return await run();
+    } finally {
+      const next = this.waitingReads.shift();
+      if (next) next();
+      else this.activeReads--;
+    }
   }
 
   private async execute<T>(

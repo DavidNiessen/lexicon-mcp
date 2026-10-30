@@ -41,6 +41,7 @@ export function fromSchema(raw: Schema): z.ZodType {
   } else if (s.type === "boolean") result = z.boolean();
   else if (s.type === "string") result = z.string();
   else result = z.unknown();
+  if (s.example === null) result = result.nullable();
   return s.description ? result.describe(s.description) : result;
 }
 

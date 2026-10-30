@@ -19,13 +19,13 @@
   },
   "devDependencies": {
     "@types/node": "24.10.1",
-    "typescript": "5.9.3",
-    "vitest": "4.0.18",
-    "eslint": "9.39.2",
-    "typescript-eslint": "8.53.1",
-    "prettier": "3.8.1",
     "esbuild": "0.27.2",
+    "eslint": "10.13.0",
+    "fflate": "0.8.2",
     "postject": "1.0.0-alpha.6",
-    "fflate": "0.8.2"
+    "prettier": "3.8.1",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.2",
+    "vitest": "4.0.18"
   }
 }

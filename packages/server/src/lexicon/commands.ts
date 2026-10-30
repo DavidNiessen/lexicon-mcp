@@ -93,6 +93,20 @@ const noOps = new Set([
   "MusicPlayer_TempomarkerIncreaseBpm",
   "MusicPlayer_TempomarkerDecreaseBpm",
 ]);
+const interactive = new Set([
+  "TrackBrowser_Analyze",
+  "TrackBrowser_ReloadTags",
+  "TrackBrowser_CuePointGenerator",
+  "TrackBrowser_Discovery",
+  "TrackBrowser_TagLookup",
+  "TrackBrowser_TagWriter",
+  "TrackBrowser_Relocate",
+  "TrackBrowser_SendToDuplicateMerge",
+  "TrackBrowser_SendToMoveFiles",
+  "Playlists_EditSmartlist",
+  "Playlists_Prefix",
+  "Playlists_Capitalize",
+]);
 export interface CommandDescriptor {
   name: string;
   classification: "direct" | "trigger" | "dialog" | "unsupported";
@@ -107,7 +121,8 @@ export const commands: CommandDescriptor[] = (
 ).map((name) => {
   const classification = noOps.has(name)
     ? "unsupported"
-    : /Dialog|OpenSettings|OpenEditor|OpenTags|OpenSearch|OpenHotkeys/.test(
+    : interactive.has(name) ||
+        /Dialog|OpenSettings|OpenEditor|OpenTags|OpenSearch|OpenHotkeys/.test(
           name,
         )
       ? "dialog"
@@ -117,7 +132,7 @@ export const commands: CommandDescriptor[] = (
   const risk =
     /Delete|Remove|Quit|Restore|UndoLast|Archive|PluginRunAction/.test(name)
       ? "destructive"
-      : /Application_Set|Application_Tags|Analyze|Selected|Merge|Cleanup|Rewrite|Prefix|Capitalize|CloudFileBackup|Beatport_.*Cart/.test(
+      : /Application_Set|Application_Tags|ApplyCuepointGenerator|Analyze|Selected|Merge|Cleanup|Rewrite|Prefix|Capitalize|CloudFileBackup|Beatport_.*Cart|TrackBrowser_(ReloadTags|CuePointGenerator|TagLookup|TagWriter|Relocate|SendTo)|Playlists_(Sort|Shuffle|Duplicate|CrossReference)/.test(
             name,
           )
         ? "bulk"
