@@ -15,7 +15,14 @@ export function createServer(runtime: Runtime) {
   for (const tool of [...operations, ...workflowRegistry, ...managementTools]) {
     const mutating =
       ("mutating" in tool && tool.mutating) ||
-      tool.name === "lexicon_apply_change_plan";
+      [
+        "lexicon_apply_change_plan",
+        "lexicon_export_report",
+        "lexicon_start_job",
+        "lexicon_cancel_job",
+        "lexicon_plan_changes",
+        "lexicon_cancel_change_plan",
+      ].includes(tool.name);
     server.registerTool(
       tool.name,
       {
