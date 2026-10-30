@@ -1,42 +1,133 @@
 # Lexicon MCP
 
-Let a local MCP assistant inspect and manage your Lexicon DJ library. The server connects to Lexicon's documented Local API and provides library tools, reviewed change plans, command discovery, reports, and MCP UI previews.
+Manage your [Lexicon DJ](https://www.lexicondj.com/) library from an MCP-compatible AI assistant. Search tracks, inspect library health, organize playlists, and review bulk changes before applying them.
 
-## Install
+Runs locally through Lexicon's documented Local API. No companion plugin or native installer is needed.
 
-Install **Node.js 24**, start Lexicon, and enable **Settings → Integrations → Local API**. Open the [Releases page](https://github.com/DavidNiessen/lexicon-mcp/releases) and copy its exact version-specific `npx` installation command:
+![Lexicon MCP preview in Claude showing a bulk tag update with before/after values and Apply/Cancel controls](docs/images/library-preview.png)
+
+_A change-plan preview in Claude. Embedded widgets depend on your client's MCP Apps support._
+
+## Quick start
+
+### 1. Prepare Lexicon and Node.js
+
+- Install **[Node.js 24](https://nodejs.org/en/download)**, which includes `npm` and `npx`. Check with `node --version`; it should start with `v24.`.
+- Open **Lexicon DJ** on Windows or macOS and enable **Settings → Integrations → Local API**. Keep Lexicon running while using library tools.
+- Choose an MCP client: **Claude Desktop, Claude Code, Codex, Cursor, or VS Code / Copilot**. Your client supplies the model; this server needs no separate model API key.
+
+### 2. Run the installer
+
+Copy one command into your terminal. Packages download directly from GitHub; no npm account is required.
+
+#### Stable release
+
+For published stable releases. The release workflow maintains this command separately from prereleases.
+
+<!-- install:release:start -->
+
+No stable release has been published yet. Use the prerelease below.
+
+<!-- install:release:end -->
+
+#### Prerelease
+
+The newest verified build from `main`. Choose this channel to try current features before a stable release.
+
+<!-- install:prerelease:start -->
 
 ```sh
-npx --yes https://github.com/DavidNiessen/lexicon-mcp/releases/download/vVERSION/lexicon-mcp-VERSION.tgz install
+npx --yes https://github.com/DavidNiessen/lexicon-mcp/releases/download/v0.1.0-dev.41118386116.1/lexicon-mcp-0.1.0-dev.41118386116.1.tgz install
 ```
 
-Replace both `VERSION` placeholders with the release version. Select your agents and installation scope. The installer preserves unrelated settings, backs up changed configurations, and copies the bundled server into persistent user storage. Restart selected agents afterward.
+<!-- install:prerelease:end -->
 
-Preview a project installation without changes:
+[All releases and package checksums](https://github.com/DavidNiessen/lexicon-mcp/releases)
 
-```sh
-npx --yes https://github.com/DavidNiessen/lexicon-mcp/releases/download/vVERSION/lexicon-mcp-VERSION.tgz install --agent cursor --scope project --dry-run --yes
-```
+### 3. Select your agents and restart them
 
-This uses a GitHub release package directly and requires no npm login. The scoped package name is not currently published to npm. See [installation](docs/installation.md) for supported agents, updates, removal, and HTTP setup.
+The installer asks for the installation scope and the agents to configure:
 
-## Features
+- **User scope:** available across projects. Use this for Claude Desktop.
+- **Project scope:** available in the current directory for clients that support it. Run the command from that project.
 
-- Track browsing/search, metadata, file references, cues, loops, and beatgrids.
-- Playlists, folders, smartlists, custom tags, and categories.
-- Player/queue inspection and a searchable catalog of application commands.
-- Library health, duplicate candidates, metadata cleanup, playlist comparison/merge, and explained set preparation.
-- Persisted change previews, per-operation outcomes, audit records, and cancellable jobs.
-- Local stdio or authenticated loopback HTTP transport.
-- Visual previews for MCP UI-capable hosts, with text and structured JSON fallbacks.
+It preserves unrelated settings, backs up changed configurations, and saves the server in persistent user storage. You can select several agents in one run. **Restart or reconnect each selected client** to load the server and its tools.
 
-Individual low-impact writes can run directly. Bulk edits, deletions, file-reference changes, and destructive commands require a persisted preview and explicit UI approval. Use Apply/Cancel in an embedded MCP Apps preview or a native MCP review dialog. Chat replies cannot approve changes, and clients with neither UI capability remain blocked. Ask the assistant to call `lexicon_ui_status` when no preview appears. See [changes and recovery](docs/changes.md).
+To skip the selection prompts, append the relevant options to the install command above:
 
-This independent integration requires Lexicon DJ for live library access. The MCP host supplies the model. Live write verification belongs in a disposable library; see the [compatibility record](docs/compatibility.md).
+| Goal                                                          | Options after `install`                                |
+| ------------------------------------------------------------- | ------------------------------------------------------ |
+| Install for Claude Desktop                                    | `--agent claude-desktop --scope user --yes`            |
+| Install for Claude Code and Codex                             | `--agent claude-code --agent codex --scope user --yes` |
+| Preview a Cursor project setup without changing configuration | `--agent cursor --scope project --dry-run --yes`       |
+| Install for VS Code / Copilot                                 | `--agent vscode --scope user --yes`                    |
+
+See [agent configuration paths and scope support](docs/installation.md#explicit-selection-and-dry-runs) for details. `--dry-run` leaves configuration and runtime files unchanged; npm may still download the package into its cache.
+
+### 4. Try your first request
+
+Start with a small, read-only check:
+
+> Use Lexicon to check MCP UI support and list five tracks. Do not change anything.
+
+Then try a report or a reviewed change:
+
+> Audit my library's metadata and show the findings without making changes.
+
+> Prepare a plan to add an existing tag to selected tracks, and open the approval preview.
+
+Plan creation and inspection return data only. The assistant opens **one review widget** with the proposed changes. Choose **Apply changes** or **Cancel** there; a chat reply does not approve a protected change. Clients with native MCP form support can use a review dialog instead. If neither UI path is available, protected changes remain blocked.
+
+## What you can do
+
+| Area                | Capabilities                                                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Tracks              | Browse and search; inspect and edit metadata, tags, file references, cues, loops, and beatgrids.                                |
+| Playlists           | Work with playlists, folders, smartlists, and custom-tag categories; compare membership and propose merges or ordering changes. |
+| Library reports     | Find metadata/file/cue/grid issues, inspect duplicate candidates, and prepare cleanup proposals.                                |
+| Set preparation     | Rank existing tracks using BPM, key, energy, duration, and tag criteria, with reasons for the results.                          |
+| Player and commands | Inspect player/queue state and discover documented Lexicon application commands.                                                |
+| Large workflows     | Run cancellable jobs, retrieve paginated results, and explicitly export reports as JSON or CSV.                                 |
+
+Individual low-impact writes can run directly. Bulk edits, deletions, file-reference changes, and destructive commands require a saved plan and explicit UI approval. Plans record exact targets, before-values, and per-operation outcomes; stale plans are rejected. See [changes and recovery](docs/changes.md).
+
+This is an independent integration and requires Lexicon DJ for live library access. Client UI support and Lexicon compatibility vary; see the [verification record](docs/compatibility.md). No audio or proprietary Lexicon implementation is distributed.
+
+## Update or remove
+
+- **Update:** rerun the install command for your preferred channel and select the agents to update, then restart them.
+- **Remove:** use the same command with `uninstall` instead of `install`, keeping your agent and scope selection. Restart the affected clients afterward.
+
+Other MCP servers and saved library reports remain separate from registration. See [updating and uninstalling](docs/installation.md#updating-and-uninstalling) for details.
+
+## Troubleshooting
+
+| Problem                               | Try this                                                                                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npx` is not found                    | Install Node.js 24, reopen the terminal, then check `node --version` and `npx --version`.                                                   |
+| Client cannot connect                 | Keep Lexicon open, enable its Local API, then restart the MCP client. The default upstream is `http://127.0.0.1:48624/v1`.                  |
+| No widget appears                     | Ask the assistant to call `lexicon_ui_status`. Installation enables tools; the host supplies the renderer or native dialog.                 |
+| Old, blank, or white preview          | Update, restart the client, and ask to reopen the saved plan. Older chat messages can retain cached UI code.                                |
+| Existing registration conflicts       | Review a dry run and the [replacement instructions](docs/installation.md); use `--force` only when you intend to replace that registration. |
+| Preview is stale or a write times out | Inspect the saved plan and current data before proposing another change. Do not blindly retry.                                              |
+
+If a Claude widget shows **“IPC not available for MCP tool call”**, its host cannot forward the button action. This matches an [upstream Code-tab report](https://github.com/anthropics/claude-ai-mcp/issues/1181). Try Claude's Chat surface or another client with widget tool-call support, reconnect, and reopen the saved plan. Rendering a preview does not by itself prove the host supports its buttons.
+
+More: [installation and troubleshooting](docs/installation.md), including manual configuration, read-only mode, and authenticated loopback HTTP.
+
+## Documentation
+
+- [Installation and configuration](docs/installation.md)
+- [Tools, commands, workflows, and previews](docs/tools.md)
+- [Review policy, outcomes, and recovery](docs/changes.md)
+- [Architecture](docs/architecture.md)
+- [Compatibility and verification](docs/compatibility.md)
+- [Development and releases](docs/development.md)
+- [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Code of conduct](CODE_OF_CONDUCT.md)
 
 ## Develop
 
-Use Node.js 24 and the pnpm version pinned in `package.json`.
+Use Node.js 24 and the pnpm version pinned in `package.json`:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -46,18 +137,8 @@ pnpm build
 pnpm package
 ```
 
-Packaging produces one platform-neutral Node tarball, an installation guide, checksums, SBOM, and dependency notices. Successful main builds publish prereleases. The manual **Release** workflow selects prerelease or stable release publishing. npm registry publication remains disabled.
-
-## Documentation
-
-- [Installation and troubleshooting](docs/installation.md)
-- [Tools, commands, workflows, and previews](docs/tools.md)
-- [Changes and recovery](docs/changes.md)
-- [Architecture](docs/architecture.md)
-- [Compatibility and verification](docs/compatibility.md)
-- [Development and releases](docs/development.md)
-- [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Code of conduct](CODE_OF_CONDUCT.md)
+Packaging creates a platform-neutral Node tarball, installation guide, checksums, SBOM, and dependency notices. CI verifies Linux, Windows, and macOS. Successful `main` builds publish prereleases; the manual **Release** workflow can publish either channel. After publication, it updates only that channel's marked install block above. npm registry publishing is disabled.
 
 ## License
 
-MIT. Dependency licenses accompany release artifacts. No audio or proprietary Lexicon implementation is distributed.
+[MIT](LICENSE). Dependency licenses accompany release artifacts.

@@ -55,8 +55,14 @@ for (const file of (
   );
 }
 await chmod(path.join(npmStage, "dist/cli.cjs"), 0o755);
-for (const file of ["README.md", "LICENSE"])
+for (const file of [
+  "README.md",
+  "LICENSE",
+  "docs/images/library-preview.png",
+]) {
+  await mkdir(path.dirname(path.join(npmStage, file)), { recursive: true });
   await copyFile(path.join(root, file), path.join(npmStage, file));
+}
 await writeFile(
   path.join(npmStage, "package.json"),
   JSON.stringify(
@@ -71,6 +77,7 @@ await writeFile(
       files: [
         "dist",
         "README.md",
+        "docs/images/library-preview.png",
         "LICENSE",
         "INSTALL.md",
         "THIRD-PARTY-NOTICES.txt",

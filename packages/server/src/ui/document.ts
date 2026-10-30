@@ -3,9 +3,10 @@ import { createUIResource } from "@mcp-ui/server";
 import { previewClient } from "./client.js";
 import type { Preview } from "./model.js";
 
-export const PREVIEW_URI = "ui://lexicon/library-review/v4.html";
+export const PREVIEW_URI = "ui://lexicon/library-review/v5.html";
 // Conversation history retains resource URIs across server upgrades.
 export const PREVIEW_ALIASES = [
+  "ui://lexicon/library-review/v4.html",
   "ui://lexicon/library-review/v3.html",
   "ui://lexicon/library-review/v2.html",
   "ui://lexicon/library-preview",

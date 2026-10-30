@@ -177,12 +177,13 @@ export function fixture(
     event("message", { source, data });
   const ready = async (
     hostContext: Record<string, unknown> = { theme: "dark" },
+    hostCapabilities: Record<string, unknown> = { serverTools: {} },
   ) => {
     const init = messages.find((message) => message.method === "ui/initialize");
     send({
       jsonrpc: "2.0",
       id: init.id,
-      result: { hostContext },
+      result: { hostContext, hostCapabilities },
     });
     await flush();
   };

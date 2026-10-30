@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — Onboarding and release commands
+
+- Add the supplied high-resolution preview screenshot and a step-by-step README for installation, first use, updates, and troubleshooting.
+- Keep stable and prerelease install commands in separate managed README blocks and update only the published channel after a successful release.
+- Preserve surrounding content and concurrent documentation edits using validated block replacements and content-SHA conflict checks.
+- Include the README preview image in packaged distributions.
+- Distinguish preview rendering from host tool-call support and explain Claude's unavailable-IPC error without automatically retrying changes.
+
 ## Unreleased — One plan widget and Claude theming
 
 - Separate plan creation and inspection from display: only `lexicon_review_change_plan` opens a plan widget or dialog and issues an approval credential.

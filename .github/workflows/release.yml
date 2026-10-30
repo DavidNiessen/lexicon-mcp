@@ -100,3 +100,10 @@ jobs:
           RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
           RELEASE_TYPE: ${{ inputs.release_type }}
         run: node scripts/draft-release.mjs
+      - name: Update only this channel's README install command
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+        run: node scripts/update-readme-install.mjs

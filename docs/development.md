@@ -36,6 +36,10 @@ Preparation resolves one version and source SHA. The package job checks out that
 
 After packaging succeeds, the publisher creates a tag targeting the original source commit, stages assets in a draft, then publishes the selected channel after uploads succeed. The release notes and `INSTALL.md` contain the exact working npx tarball URL. Failed uploads leave a draft for inspection rather than exposing incomplete published assets.
 
+After publication, `scripts/update-readme-install.mjs` updates only the matching README install block: `install:release` for a stable release, or `install:prerelease` for a prerelease. Keep both marker pairs unique and put only their managed command inside each block. Before the first stable publication, the stable block contains its unavailable note. Headings, prose, screenshots, other URLs, and the other channel remain untouched. Missing, duplicate, reversed, overlapping, or unexpectedly edited blocks fail validation before any write.
+
+The updater verifies the published channel and uploaded package, then reads the latest README on `main` through GitHub's Contents API. It uses the file SHA and bounded conflict retries to preserve intervening edits, skips unchanged commands, and prevents older release reruns from moving a channel backward. The `[skip ci]` Conventional Commit uses `GITHUB_TOKEN`, so it does not trigger another prerelease build. Its write is limited to `README.md`; it never resets or force-pushes the branch.
+
 Both public and private repositories are supported according to GitHub visibility. The publishing job needs `contents: write`; downloading build artifacts needs `actions: read`. npm registry publishing is disabled and no npm account is required for GitHub tarball installation.
 
 ## Dependency inventory

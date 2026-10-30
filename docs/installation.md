@@ -54,6 +54,8 @@ Compatible hosts can render visual change-plan, health-report, and prepared-set 
 
 The preview canvas is transparent and follows the host theme and style tokens. Both color schemes are declared before first paint so browsers do not add an opaque iframe backdrop when Claude is dark and the system preference is light, or vice versa. ChatGPT widget state restores the view after iframe remounts when available. Approval credentials are not persisted with that snapshot. Returning to a chat never applies or cancels a plan, and closing a native dialog leaves it pending. If an older preview is blank, white, or its approval has expired, reopen that existing plan after upgrading and restarting the client; old cached templates may retain their original UI code.
 
+Rendering and button calls are separate host capabilities. A standard MCP Apps host must advertise `hostCapabilities.serverTools` for Apply/Cancel calls. A display-only host can still show the preview, with actions disabled. The Claude error `IPC not available for MCP tool call` matches an [upstream report about local Code-tab view forwarding](https://github.com/anthropics/claude-ai-mcp/issues/1181); it is not a Lexicon API error. Try Claude's Chat surface or another host that supports widget tool calls, reconnect, and reopen the pending plan. The component never retries the action through another bridge automatically.
+
 ## Manual configuration and development
 
 After `pnpm install --frozen-lockfile` and `pnpm build`, clients using `mcpServers` can launch the development bundle:
