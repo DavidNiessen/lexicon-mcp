@@ -1,133 +1,86 @@
 import { expect, it } from "vitest";
 import { fixture, grant, model, plan } from "./ui-fixture.js";
-it("does not apply upon hydration and sends one bound approval only after an Apply click", async () => {
+import { previewClient } from "../src/ui/client.js";
+
+it("renders and filters a pending plan without any approval controls or tool calls", async () => {
   const f = fixture();
-  expect(f.elements.get("apply-changes")!.disabled).toBe(true);
   await f.ready();
   f.result();
-  expect(f.document.documentElement.dataset.theme).toBe("dark");
-  expect(
-    f.messages.filter((message) => message.method === "tools/call"),
-  ).toHaveLength(0);
-  expect(f.elements.get("apply-changes")!.disabled).toBe(false);
+  expect(f.elements.get("preview")!.textContent).toContain("Industrial");
+  for (const id of [
+    "apply-changes",
+    "cancel-changes",
+    "approval-controls",
+    "approval-status",
+  ])
+    expect(f.elements.has(id)).toBe(false);
+  f.elements.get("filter")!.input("no match");
+  expect(f.elements.get("row-status")!.textContent).toBe("0 of 1 rows shown");
+  f.elements.get("filter")!.input("Industrial");
+  expect(f.elements.get("row-status")!.textContent).toBe("1 of 1 rows shown");
   f.elements.get("show-details")!.click();
+  expect(f.elements.get("details")!.textContent).toContain(plan.id);
   expect(f.elements.get("details")!.textContent).not.toContain(grant.token);
-  const first = f.elements.get("apply-changes")!.click();
-  f.elements.get("apply-changes")!.click();
-  const calls = f.messages.filter((message) => message.method === "tools/call");
-  expect(calls).toHaveLength(1);
-  expect(calls[0].params).toEqual({
-    name: "lexicon_confirm_change_plan",
-    arguments: {
-      id: grant.id,
-      hash: grant.hash,
-      token: grant.token,
-      decision: "apply",
-    },
-  });
-  expect(f.elements.get("apply-changes")!.disabled).toBe(true);
-  f.send({
-    jsonrpc: "2.0",
-    id: calls[0].id,
-    result: { structuredContent: { result: { ...plan, status: "completed" } } },
-  });
-  await first;
-  expect(f.elements.get("approval-status")!.textContent).toBe(
-    "Changes applied.",
-  );
-  expect(f.elements.get("apply-changes")!.disabled).toBe(true);
+  expect(
+    f.messages.some(
+      (message) =>
+        message.method === "tools/call" || message.method === "ui/message",
+    ),
+  ).toBe(false);
 });
-it("cancels via the host and never falls back to text or direct mutation calls", async () => {
-  const f = fixture();
-  await f.ready();
-  f.result();
-  const cancelled = f.elements.get("cancel-changes")!.click();
-  const call = f.messages.find((message) => message.method === "tools/call");
-  expect(call.params.arguments.decision).toBe("cancel");
-  f.send({
-    jsonrpc: "2.0",
-    id: call.id,
-    result: { structuredContent: { result: { ...plan, status: "cancelled" } } },
-  });
-  await cancelled;
-  expect(f.elements.get("approval-status")!.textContent).toContain(
-    "No changes were applied",
-  );
-  expect(f.messages.some((message) => message.method === "ui/message")).toBe(
-    false,
-  );
+
+it("keeps embedded previews readable when the host never initializes", () => {
+  const f = fixture(undefined, true);
+  expect(f.elements.get("title")!.textContent).toBe(model.title);
+  for (const timer of f.timers.values()) timer();
+  for (const interval of f.intervals) interval();
+  expect(f.elements.get("state")!.textContent).toBe("pending");
+  expect(
+    f.messages.some(
+      (message) =>
+        message.method === "tools/call" || message.method === "ui/message",
+    ),
+  ).toBe(false);
 });
-it("keeps actions disabled without a bridge, valid grant, or exact plan match", async () => {
-  const standalone = fixture(undefined, true);
-  standalone.result();
-  expect(standalone.elements.get("apply-changes")!.disabled).toBe(true);
-  const f = fixture();
-  await f.ready();
-  f.result(null);
-  expect(f.elements.get("apply-changes")!.disabled).toBe(true);
-  f.result({ ...grant, hash: "b".repeat(64) });
-  expect(f.elements.get("apply-changes")!.disabled).toBe(true);
-  f.result({ ...grant, token: "short" });
-  expect(f.elements.get("apply-changes")!.disabled).toBe(true);
-  f.result({ ...grant, expiresAt: new Date(0).toISOString() });
-  expect(f.elements.get("apply-changes")!.disabled).toBe(true);
-  f.result(null);
-  expect(f.elements.get("apply-changes")!.disabled).toBe(true);
-  f.elements.get("apply-changes")!.click();
-  expect(f.messages.some((message) => message.method === "tools/call")).toBe(
-    false,
-  );
-});
-it("rejects grants from non-parent messages and disables a rejected approval", async () => {
-  const f = fixture();
+
+it("ignores result messages from unrelated windows", async () => {
+  const f = fixture(undefined, false, { initial: null });
   await f.ready();
   f.send(
     {
       jsonrpc: "2.0",
       method: "ui/notifications/tool-result",
-      params: {
-        _meta: { "lexicon/preview": model, "lexicon/approval": grant },
-      },
+      params: { _meta: { "lexicon/preview": model } },
     },
     {},
   );
-  expect(f.elements.get("apply-changes")!.disabled).toBe(true);
+  expect(f.elements.get("preview")!.textContent).not.toContain("Industrial");
   f.result();
-  const applied = f.elements.get("apply-changes")!.click();
-  const call = f.messages.find((message) => message.method === "tools/call");
-  f.send({
-    jsonrpc: "2.0",
-    id: call.id,
-    error: { message: "Plan is stale. Reopen it." },
-  });
-  await applied;
-  expect(f.elements.get("approval-status")!.textContent).toContain(
-    "Plan is stale",
-  );
-  expect(f.elements.get("apply-changes")!.disabled).toBe(true);
+  expect(f.elements.get("preview")!.textContent).toContain("Industrial");
 });
-it("supports the OpenAI component bridge while keeping credentials out of visible data", async () => {
-  const calls: any[] = [];
+
+it("contains no mutation bridge even when stale hosts provide approval metadata", () => {
+  const calls: unknown[] = [];
+  const states: unknown[] = [];
   const f = fixture({
+    callTool: async (...args: unknown[]) => {
+      calls.push(args);
+      return {};
+    },
+    setWidgetState: (state: unknown) => states.push(state),
     toolOutput: { result: plan },
     toolResponseMetadata: {
       "lexicon/preview": model,
       "lexicon/approval": grant,
     },
-    callTool: async (name: string, args: any) => {
-      calls.push({ name, args });
-      return {
-        structuredContent: { result: { ...plan, status: "completed" } },
-      };
-    },
   });
-  expect(f.messages.some((message) => message.method === "ui/initialize")).toBe(
-    false,
-  );
-  await f.elements.get("apply-changes")!.click();
-  expect(calls).toHaveLength(1);
-  expect(calls[0].args.token).toBe(grant.token);
-  expect(
-    [...f.elements.values()].map((element) => element.textContent).join(""),
-  ).not.toContain(grant.token);
+  f.elements.get("show-details")!.click();
+  f.elements.get("filter")!.input("Industrial");
+  f.event("pageshow");
+  f.documentEvent("visibilitychange");
+  expect(calls).toHaveLength(0);
+  expect(JSON.stringify(states)).not.toContain(grant.token);
+  expect(previewClient).not.toContain("callTool");
+  expect(previewClient).not.toContain("tools/call");
+  expect(previewClient).not.toContain("ui/message");
 });

@@ -22,7 +22,7 @@ Visual preview checks cover escaped metadata, empty/error states, and fallback b
 
 Claude's documented transparent theming is covered by Chrome tests with two nested host frames, explicit light/dark host schemes, opposite system preferences, and `light-dark()` style tokens. Tests reproduce the former white canvas despite transparent computed CSS, then verify that the corrected rendered pixels match the host background. This is browser-level evidence rather than a live Claude account interaction. See [Claude's theming contract](https://claude.com/docs/connectors/building/mcp-apps/transparent-theming).
 
-For Codex desktop, `lexicon_ui_status` reports the capabilities advertised by the current connection. Embedded Apps use Apply/Cancel buttons; clients advertising form elicitation use a native MCP approval dialog through `lexicon_review_change_plan`. Neither capability means changes remain blocked. SDK integration tests cover both approval paths, but actual Codex desktop rendering and dialogs still need host verification. Chat replies cannot apply a plan.
+For every client, `lexicon_ui_status` reports the capabilities advertised by its current connection. Preview widgets are read-only. `lexicon_review_change_plan` uses native MCP forms whenever advertised; otherwise it opens a plan-bound chat confirmation. The chat decision tool rejects clients advertising forms, so an absent or failed native dialog is not evidence that chat fallback is permitted. Protocol tests use synthetic consent and data; actual host rendering still needs verification. The server cannot independently inspect the chat transcript.
 
 ## Safe live smoke test
 

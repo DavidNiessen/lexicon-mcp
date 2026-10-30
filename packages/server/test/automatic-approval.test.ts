@@ -74,7 +74,7 @@ it.each([
   },
 );
 
-it("blocks the Claude profile when native forms are unavailable instead of rendering dead buttons", async () => {
+it("requests explicit chat confirmation when native forms are unavailable", async () => {
   const f = await connected(true, true, false, "native");
   const plan = await f.runtime.plans.create(operations);
   const issue = vi.spyOn(f.runtime.approvals, "issue");
@@ -83,10 +83,8 @@ it("blocks the Claude profile when native forms are unavailable instead of rende
     arguments: { id: plan.id },
   });
   const result = (response.structuredContent as any).result;
-  expect(result.review.mode).toBe("unavailable");
-  expect(result.review.message).toContain(
-    "does not advertise native MCP form dialogs",
-  );
+  expect(result.review.mode).toBe("chat-confirmation");
+  expect(result.review.chatConfirmationRequired).toBe(true);
   expect(result.status).toBe("pending");
   expect(issue).not.toHaveBeenCalled();
   expect(f.writes()).toBe(0);

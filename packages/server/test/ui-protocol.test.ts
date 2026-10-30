@@ -44,7 +44,7 @@ it("advertises UI resources and preserves text and structured results over MCP",
     );
     const tools = await client.listTools();
     expect(
-      tools.tools.find((tool) => tool.name === "lexicon_review_change_plan")
+      tools.tools.find((tool) => tool.name === "lexicon_preview_change_plan")
         ?._meta,
     ).toMatchObject({ ui: { resourceUri: PREVIEW_URI } });
     const ui = await client.readResource({ uri: PREVIEW_URI });

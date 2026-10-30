@@ -3,9 +3,10 @@ import { createUIResource } from "@mcp-ui/server";
 import { previewClient } from "./client.js";
 import type { Preview } from "./model.js";
 
-export const PREVIEW_URI = "ui://lexicon/library-review/v6.html";
+export const PREVIEW_URI = "ui://lexicon/library-review/v7.html";
 // Conversation history retains resource URIs across server upgrades.
 export const PREVIEW_ALIASES = [
+  "ui://lexicon/library-review/v6.html",
   "ui://lexicon/library-review/v5.html",
   "ui://lexicon/library-review/v4.html",
   "ui://lexicon/library-review/v3.html",
@@ -13,7 +14,7 @@ export const PREVIEW_ALIASES = [
   "ui://lexicon/library-preview",
 ] as const;
 export const PREVIEW_MIME = "text/html;profile=mcp-app";
-const styles = `button:disabled{opacity:.5;cursor:not-allowed}button.primary{background:var(--accent);color:var(--bg);font-weight:650}button.primary:hover:not(:disabled){filter:brightness(.94)}.approval{border-top:1px solid var(--line);margin-top:20px;padding-top:16px}.approval-buttons{display:flex;gap:8px;justify-content:flex-end}.approval p{margin-top:10px;font-size:13px}
+const styles = `
 :root{color-scheme:light dark;background:transparent;--bg:var(--color-background-primary,#fafaf8);--fg:var(--color-text-primary,#202622);--muted:var(--color-text-secondary,#59635d);--line:var(--color-border-primary,#d7ddd8);--accent:#245d3e;--soft:var(--color-background-secondary,#edf3ee);font:14px/1.55 var(--font-sans,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif)}
 @media(prefers-color-scheme:dark){:root{--bg:var(--color-background-primary,#151b18);--fg:var(--color-text-primary,#e5ece7);--muted:var(--color-text-secondary,#a7b7ad);--line:var(--color-border-primary,#3c4b42);--accent:#9ad5b0;--soft:var(--color-background-secondary,#24332a)}}
 :root[data-theme=light]{color-scheme:light;--bg:var(--color-background-primary,#fafaf8);--fg:var(--color-text-primary,#202622);--muted:var(--color-text-secondary,#59635d);--line:var(--color-border-primary,#d7ddd8);--accent:#245d3e;--soft:var(--color-background-secondary,#edf3ee)}
@@ -38,7 +39,7 @@ export function previewResource(preview?: Preview, apps = false) {
     encoding: "text",
     content: {
       type: "rawHtml",
-      htmlString: `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lexicon library preview</title><style>${styles}</style></head><body><main aria-label="Lexicon library preview"><div class="heading"><div><h1 id="title">Library preview</h1><p id="description">Run a library report or create a change plan to inspect its results here.</p></div><span id="state" class="state">Waiting for results</span></div><dl id="facts"></dl><div class="toolbar"><label for="filter">Filter visible rows<input id="filter" type="search" placeholder="Track, field, or finding" disabled></label><p id="row-status" class="support" role="status" aria-live="polite"></p></div><div id="preview" class="table-wrap" role="region" aria-label="Changes and report rows" tabindex="0"></div><p id="empty" class="empty">No results to display.</p><p id="truncation" class="notice" hidden>This preview shows a bounded page. Ask the assistant for the next page or full report.</p><section id="approval-controls" class="approval" aria-label="Confirm library changes" hidden><div class="approval-buttons"><button id="cancel-changes" type="button" disabled>Cancel</button><button id="apply-changes" type="button" class="primary" disabled>Apply changes</button></div><p id="approval-status" role="status" aria-live="polite"></p></section><div class="footer"><p id="note" class="support">Library changes require explicit approval in the confirmation controls.</p><button id="show-details" type="button" aria-expanded="false" aria-controls="details">Show preview data</button></div><pre id="details" hidden></pre></main><script id="initial" type="application/json">${serialized(preview)}</script><script>${previewClient}</script></body></html>`,
+      htmlString: `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lexicon library preview</title><style>${styles}</style></head><body><main aria-label="Lexicon library preview"><div class="heading"><div><h1 id="title">Library preview</h1><p id="description">Run a library report or create a change plan to inspect its results here.</p></div><span id="state" class="state">Waiting for results</span></div><dl id="facts"></dl><div class="toolbar"><label for="filter">Filter visible rows<input id="filter" type="search" placeholder="Track, field, or finding" disabled></label><p id="row-status" class="support" role="status" aria-live="polite"></p></div><div id="preview" class="table-wrap" role="region" aria-label="Changes and report rows" tabindex="0"></div><p id="empty" class="empty">No results to display.</p><p id="truncation" class="notice" hidden>This preview shows a bounded page. Ask the assistant for the next page or full report.</p><div class="footer"><p id="note" class="support">Approval happens in your chat client, using native controls or an explicit chat confirmation.</p><button id="show-details" type="button" aria-expanded="false" aria-controls="details">Show preview data</button></div><pre id="details" hidden></pre></main><script id="initial" type="application/json">${serialized(preview)}</script><script>${previewClient}</script></body></html>`,
     },
 
     metadata: {

@@ -98,7 +98,7 @@ it.each([
   },
 );
 
-it("fails closed when only widgets are advertised and native forms are unavailable", async () => {
+it("requests explicit chat confirmation when native forms are unavailable", async () => {
   const f = await connected(true, true, false);
   const issue = vi.spyOn(f.runtime.approvals, "issue");
   const plan = await f.runtime.plans.create(operations);
@@ -115,7 +115,7 @@ it("fails closed when only widgets are advertised and native forms are unavailab
   });
   expect(response.isError).not.toBe(true);
   expect((response.structuredContent as any).result.review.mode).toBe(
-    "unavailable",
+    "chat-confirmation",
   );
   expect((response.structuredContent as any).result.status).toBe("pending");
   expect(issue).not.toHaveBeenCalled();

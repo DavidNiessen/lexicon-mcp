@@ -36,12 +36,12 @@ it.each(["mcp_tool_result", "call_tool_result"])(
     const f = fixture(host.api, false, { initial: null });
     expect(f.elements.get("title")!.textContent).toBe(model.title);
     expect(f.elements.get("preview")!.textContent).toContain("Industrial");
-    expect(f.elements.get("apply-changes")!.disabled).toBe(false);
+    expect(f.elements.has("apply-changes")).toBe(false);
     expect(host.calls).toHaveLength(0);
   },
 );
 
-it("keeps a valid preview and grant when globals arrive in partial updates", () => {
+it("keeps a valid read-only preview when globals arrive in partial updates", () => {
   const host = bridge({
     toolOutput: { result: plan },
     toolResponseMetadata: metadata,
@@ -51,7 +51,7 @@ it("keeps a valid preview and grant when globals arrive in partial updates", () 
   f.globals({ toolOutput: { result: plan } });
   expect(f.document.documentElement.dataset.theme).toBe("dark");
   expect(f.elements.get("preview")!.textContent).toContain("Industrial");
-  expect(f.elements.get("apply-changes")!.disabled).toBe(false);
+  expect(f.elements.has("apply-changes")).toBe(false);
   expect(host.calls).toHaveLength(0);
 });
 
@@ -67,7 +67,7 @@ it("connects a delayed OpenAI bridge without waiting for a new tool invocation",
     toolResponseMetadata: { mcp_tool_result: envelope },
   });
   expect(f.elements.get("title")!.textContent).toBe(model.title);
-  expect(f.elements.get("apply-changes")!.disabled).toBe(false);
+  expect(f.elements.has("apply-changes")).toBe(false);
   expect(host.calls).toHaveLength(0);
 });
 
@@ -97,11 +97,11 @@ it("restores a cached report, filter, and disclosure across iframe remounts", ()
   expect(remounted.elements.get("details")!.textContent).toContain(
     "missing_metadata",
   );
-  expect(remounted.elements.get("approval-controls")!.hidden).toBe(true);
+  expect(remounted.elements.has("approval-controls")).toBe(false);
   expect(nextHost.calls).toHaveLength(0);
 });
 
-it("never persists approval credentials and restores cached pending plans without permission to apply", () => {
+it("ignores legacy approval credentials and restores cached pending plans as data", () => {
   const host = bridge({ toolResponseMetadata: metadata });
   const f = fixture(host.api, false, { initial: null });
   f.elements.get("filter")!.input("Industrial");
@@ -114,8 +114,8 @@ it("never persists approval credentials and restores cached pending plans withou
   expect(remounted.elements.get("preview")!.textContent).toContain(
     "Industrial",
   );
-  expect(remounted.elements.get("apply-changes")!.disabled).toBe(true);
-  expect(remounted.elements.get("cancel-changes")!.disabled).toBe(true);
+  expect(remounted.elements.has("apply-changes")).toBe(false);
+  expect(remounted.elements.has("cancel-changes")).toBe(false);
   expect(nextHost.calls).toHaveLength(0);
 });
 
@@ -130,8 +130,8 @@ it.each(["completed", "cancelled", "failed", "interrupted"])(
     });
     const f = fixture(host.api, false, { initial: null });
     expect(f.elements.get("state")!.textContent).toBe(status);
-    expect(f.elements.get("apply-changes")!.disabled).toBe(true);
-    expect(f.elements.get("cancel-changes")!.disabled).toBe(true);
+    expect(f.elements.has("apply-changes")).toBe(false);
+    expect(f.elements.has("cancel-changes")).toBe(false);
     expect(host.calls).toHaveLength(0);
   },
 );
@@ -147,7 +147,7 @@ it("does not overwrite cached completion when embedded initial HTML renders befo
   expect(f.elements.get("state")!.textContent).toBe("completed");
   expect(f.elements.get("filter")!.value).toBe("Industrial");
   expect(f.elements.get("details")!.hidden).toBe(false);
-  expect(f.elements.get("apply-changes")!.disabled).toBe(true);
+  expect(f.elements.has("apply-changes")).toBe(false);
   expect(host.api.widgetState.privateContent.lexicon.preview.plan.status).toBe(
     "completed",
   );
@@ -171,7 +171,7 @@ it("replaces a cached snapshot when a different authoritative plan arrives", () 
   const f = fixture(host.api, false, { initial: null });
   f.elements.get("show-details")!.click();
   expect(f.elements.get("details")!.textContent).toContain(nextPlan.id);
-  expect(f.elements.get("apply-changes")!.disabled).toBe(false);
+  expect(f.elements.has("apply-changes")).toBe(false);
   expect(host.calls).toHaveLength(0);
 });
 
@@ -186,7 +186,7 @@ it("survives absent or failing host persistence without losing the current previ
     const f = fixture(host.api, false, { initial: null });
     expect(() => f.elements.get("filter")!.input("Industrial")).not.toThrow();
     expect(f.elements.get("preview")!.textContent).toContain("Industrial");
-    expect(f.elements.get("apply-changes")!.disabled).toBe(false);
+    expect(f.elements.has("apply-changes")).toBe(false);
     expect(host.calls).toHaveLength(0);
   }
 });

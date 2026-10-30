@@ -43,7 +43,7 @@ function base(title: string, description: string): Preview {
 function planPreview(data: Record<string, any>): Preview {
   const preview = base(
     "Review library changes",
-    "Compare the proposed values, then choose Apply changes or Cancel below.",
+    "Compare the proposed values here. Approval happens in your chat.",
   );
   preview.status = display(data.status ?? "Proposal");
   if (data.status && data.status !== "pending")
@@ -105,7 +105,7 @@ function planPreview(data: Record<string, any>): Preview {
   }
   preview.total = total;
   preview.note = data.id
-    ? "Approve or cancel this exact plan in the confirmation controls. No chat confirmation is needed."
+    ? "Use your chat client's native approval controls, or confirm in chat when native controls are unavailable."
     : "Proposal only. Ask the assistant to create a change plan to capture and review the before values.";
   if (data.status && data.status !== "pending")
     preview.note = `Plan ${data.status}. This approval cannot apply further changes. Inspect the outcomes before making another plan.`;

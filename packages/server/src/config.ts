@@ -10,6 +10,7 @@ export const configSchema = z.object({
   httpToken: z.string().min(32).optional(),
   port: z.number().int().min(1024).max(65535).default(48625),
   readOnly: z.boolean().default(false),
+  // Deprecated compatibility field. Review routing ignores this setting.
   approvalUi: z.enum(["auto", "native"]).optional(),
   exportDir: z.string().optional(),
 });
@@ -48,9 +49,6 @@ export async function loadConfig(): Promise<Config> {
       ? { httpToken: process.env.LEXICON_HTTP_TOKEN }
       : {}),
     ...(process.env.LEXICON_READ_ONLY === "true" ? { readOnly: true } : {}),
-    ...(process.env.LEXICON_APPROVAL_UI
-      ? { approvalUi: process.env.LEXICON_APPROVAL_UI }
-      : {}),
   });
   const url = new URL(config.baseUrl);
   if (

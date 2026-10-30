@@ -2,7 +2,7 @@ import { previewFor } from "./ui/model.js";
 
 /** Only these read-only results or explicit display tools create a widget. */
 export const renderTools = new Set([
-  "lexicon_review_change_plan",
+  "lexicon_preview_change_plan",
   "lexicon_show_report",
   "lexicon_library_health",
   "lexicon_find_duplicates",
@@ -15,60 +15,48 @@ export function planReview(
   capabilities: { inline: boolean; form: boolean },
   readOnly: boolean,
   dismissed: boolean,
-  nativePreferred = false,
 ) {
   if (status !== "pending") return undefined;
   const inspecting = tool === "lexicon_get_change_plan";
-  const native = tool === "lexicon_review_change_plan_native";
-  const opening = tool === "lexicon_review_change_plan" || native;
+  const previewing = tool === "lexicon_preview_change_plan";
+  const opening =
+    tool === "lexicon_review_change_plan" ||
+    tool === "lexicon_review_change_plan_native";
   const next =
-    !dismissed &&
-    !readOnly &&
-    !inspecting &&
-    !opening &&
-    (capabilities.inline || capabilities.form);
+    !dismissed && !readOnly && !inspecting && !opening
+      ? previewing || !capabilities.inline
+        ? "lexicon_review_change_plan"
+        : "lexicon_preview_change_plan"
+      : undefined;
   let message: string;
   if (dismissed)
     message =
       "Approval was not granted. The plan is still pending; no changes were applied. Do not cancel it or reopen the dialog automatically. Wait for the user to request another review.";
   else if (readOnly)
     message = "The server is in read-only mode; applying changes is blocked.";
-  else if ((native || nativePreferred) && !capabilities.form)
-    message =
-      "This client does not advertise native MCP form dialogs. Native approval is selected, so this connection cannot open approval. The saved plan remains pending. Use a client with native forms; do not ask for chat approval or claim a dialog is visible.";
   else if (inspecting)
     message =
-      "Data-only inspection: this call opened no review UI and does not prove any approval UI is open. When the user asks to open review, request it with lexicon_review_change_plan in the MCP client, then wait. For disabled buttons or IPC failures, use nativeReviewTool when available. Never tell the user to open a dialog inside Lexicon DJ. Otherwise preserve the existing preview; do not reopen it automatically.";
+      "Data-only inspection: this call opened no review UI. Show the saved plan's read-only preview when requested, then use lexicon_review_change_plan for native client approval or chat confirmation. Do not infer a visible dialog from pending status or reopen automatically.";
   else if (next)
-    message =
-      "Call lexicon_review_change_plan once to display this saved plan's approval UI, then wait. Do not ask for a chat reply.";
-  else if (capabilities.inline)
-    message =
-      "An MCP widget was requested in the chat client; its visibility and working buttons are not verified by this server. Wait for the user's UI action. If the user reports disabled controls or IPC failure, call lexicon_review_change_plan_native when advertised. Do not refer to a separate dialog inside Lexicon.";
+    message = `Call ${next} next. The preview is read-only; approval happens separately in the chat client.`;
   else if (capabilities.form)
     message =
-      "A native MCP approval form was requested in the chat client, not inside Lexicon. Wait for the user to submit it. Do not claim it is visible unless the host/user confirms, and do not reopen it automatically.";
+      "A native approval form was requested in the chat client. Wait for the user's decision. Do not claim it is visible unless confirmed, or reopen a dismissed form automatically.";
   else
     message =
-      "This client has not advertised an MCP Apps renderer or form elicitation. Applying changes is blocked; reconnect with a UI-capable client.";
+      "Native approval controls are unavailable. Summarize this exact saved plan, ask the user to approve or cancel it in chat, and wait for their explicit reply. Only then relay their decision with lexicon_decide_change_plan, the reviewed ID/hash and confirmed=true. Never infer consent or treat the original edit request as approval.";
   return {
     mode: readOnly
       ? "read-only"
-      : capabilities.inline
-        ? "embedded-preview"
-        : capabilities.form
-          ? "native-mcp-dialog"
-          : "unavailable",
-    ...(dismissed
-      ? { dismissed: true }
-      : next
-        ? { nextTool: "lexicon_review_change_plan" }
-        : {}),
+      : capabilities.form
+        ? "native-mcp-dialog"
+        : "chat-confirmation",
+    ...(dismissed ? { dismissed: true } : next ? { nextTool: next } : {}),
     ...(inspecting
       ? {
           inspectionOnly: true,
           uiOpenedByThisCall: false,
-          ...(!readOnly && (capabilities.inline || capabilities.form)
+          ...(!readOnly
             ? {
                 openReviewTool: "lexicon_review_change_plan",
                 ...(capabilities.form
@@ -78,14 +66,14 @@ export function planReview(
             : {}),
         }
       : {}),
-    ...(capabilities.inline && capabilities.form && !native && !readOnly
+    ...(!readOnly && !capabilities.form && opening && !dismissed
       ? {
-          fallbackTool: "lexicon_review_change_plan_native",
-          fallbackWhen:
-            "User reports disabled widget controls or unavailable IPC forwarding.",
+          chatConfirmationRequired: true,
+          decisionTool: "lexicon_decide_change_plan",
         }
       : {}),
-    approvalLocation: "MCP client UI, not a dialog in Lexicon DJ",
+    approvalLocation:
+      "Native chat-client controls, or explicit chat confirmation if unavailable",
     uiVisibility: "not-verified-by-server",
     message,
   };

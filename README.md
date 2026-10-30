@@ -70,9 +70,9 @@ Then try a report or a reviewed change:
 
 > Audit my library's metadata and show the findings without making changes.
 
-> Prepare a plan to add an existing tag to selected tracks, and open the approval preview.
+> Prepare one plan to add an existing tag to selected tracks, show its preview, and request approval.
 
-Plan creation and inspection return data only. The assistant opens **one review widget** with the proposed changes. Choose **Apply changes** or **Cancel** there; a chat reply does not approve a protected change. Clients with native MCP form support can use a review dialog instead. If neither UI path is available, protected changes remain blocked.
+Plan creation and inspection return compact text summaries. The assistant can show **one read-only preview widget**, then request approval separately. A client advertising native MCP forms opens its own confirmation form. Otherwise, the assistant asks you to approve or cancel the exact plan in chat and relays your answer. The preview has no write buttons and never applies changes by itself.
 
 ## What you can do
 
@@ -85,7 +85,7 @@ Plan creation and inspection return data only. The assistant opens **one review 
 | Player and commands | Inspect player/queue state and discover documented Lexicon application commands.                                                |
 | Large workflows     | Run cancellable jobs, retrieve paginated results, and explicitly export reports as JSON or CSV.                                 |
 
-Individual low-impact writes can run directly. Bulk edits, deletions, file-reference changes, and destructive commands require a saved plan and explicit UI approval. Plans record exact targets, before-values, and per-operation outcomes; stale plans are rejected. See [changes and recovery](docs/changes.md).
+All persistent library edits require a saved plan and explicit approval, including edits to a single track. Splitting a bulk request into individual calls cannot bypass review. Plans record exact targets, before-values, and per-operation outcomes; stale plans are rejected. The assistant should prepare one plan for the task. See [changes and recovery](docs/changes.md).
 
 This is an independent integration and requires Lexicon DJ for live library access. Client UI support and Lexicon compatibility vary; see the [verification record](docs/compatibility.md). No audio or proprietary Lexicon implementation is distributed.
 
@@ -107,9 +107,9 @@ Other MCP servers and saved library reports remain separate from registration. S
 | Existing registration conflicts       | Review a dry run and the [replacement instructions](docs/installation.md); use `--force` only when you intend to replace that registration. |
 | Preview is stale or a write times out | Inspect the saved plan and current data before proposing another change. Do not blindly retry.                                              |
 
-Claude installations now automatically use native MCP approval forms for change plans. This avoids the disabled buttons and **“IPC not available for MCP tool call”** error reported in Claude's Code-tab widget bridge ([upstream report](https://github.com/anthropics/claude-ai-mcp/issues/1181)). Rerun the installer from the current release, fully quit/reopen Claude, and ask to review the existing saved plan. The normal review tool selects the native form without an extra assistant call or disabled widget. You still check the approval field and submit. If the client lacks native forms, changes remain blocked. Read-only preview widgets remain available; other agents keep their embedded approval flow. `lexicon_ui_status` reports the selected mode. Approval happens in the MCP client.
+Previews no longer use widget tool-call bridges, so Claude's display-only Code-tab widgets can show the proposed values without disabled approval buttons. `lexicon_review_change_plan` selects a native MCP form whenever the connected client advertises one; otherwise it opens an exact-plan chat review. If a native form is advertised but fails to appear, the assistant must report that failure rather than bypass it through chat. Update and restart the client to load this flow. The installer removes the former `LEXICON_APPROVAL_UI` override while preserving other settings.
 
-If the assistant says to open a dialog inside Lexicon DJ after only using `lexicon_get_change_plan`, it has inspected the saved plan without opening approval. Ask it to call the review tool with that plan ID. The tool history should show `lexicon_review_change_plan` or the supported native alternative before you are asked to use the approval controls.
+`lexicon_get_change_plan` only inspects data. `lexicon_preview_change_plan` shows the read-only widget, and `lexicon_review_change_plan` requests approval. Approval belongs to the MCP client or the explicit chat fallback, never a separate review window inside Lexicon DJ.
 
 More: [installation and troubleshooting](docs/installation.md), including manual configuration, read-only mode, and authenticated loopback HTTP.
 

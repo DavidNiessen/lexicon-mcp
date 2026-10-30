@@ -22,7 +22,9 @@ it("keeps inspection routing before large snapshots without opening UI or changi
   const text = (response.content as any[]).find(
     (item) => item.type === "text",
   ).text;
-  expect(text.length).toBeGreaterThan(50_000);
+  expect(text.length).toBeLessThan(16_000);
+  expect((response.structuredContent as any).result.before).toBeUndefined();
+  expect((response.structuredContent as any).result.operationCount).toBe(1);
   expect(text.slice(0, 2000)).toContain('"uiOpenedByThisCall":false');
   expect(text.slice(0, 2000)).toContain(
     '"nativeReviewTool":"lexicon_review_change_plan_native"',
@@ -44,13 +46,13 @@ it("keeps inspection routing before large snapshots without opening UI or changi
   const tool = (await f.client.listTools()).tools.find(
     (tool) => tool.name === "lexicon_get_change_plan",
   )!;
-  expect(tool.description).toContain("does not open any approval UI");
+  expect(tool.description).toContain("does not request approval");
 });
 
 it.each([
   { inline: true, form: false, readOnly: false, open: true, native: false },
   { inline: false, form: true, readOnly: false, open: true, native: true },
-  { inline: false, form: false, readOnly: false, open: false, native: false },
+  { inline: false, form: false, readOnly: false, open: true, native: false },
   { inline: true, form: true, readOnly: true, open: false, native: false },
 ])(
   "provides conditional review routes without automatically reopening for %j",

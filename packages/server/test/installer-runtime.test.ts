@@ -78,14 +78,19 @@ it.each(["cursor", "claude-code"])(
           arguments: {},
         });
         expect((status.structuredContent as any).result.mode).toBe(
-          agent === "claude-code" ? "native-mcp-dialog" : "embedded-preview",
+          "native-mcp-dialog",
         );
         const review = tools.tools.find(
           (tool) => tool.name === "lexicon_review_change_plan",
         )!;
-        expect(Boolean((review._meta?.ui as any)?.resourceUri)).toBe(
-          agent !== "claude-code",
-        );
+        expect((review._meta?.ui as any)?.resourceUri).toBeUndefined();
+        expect(
+          (
+            tools.tools.find(
+              (tool) => tool.name === "lexicon_preview_change_plan",
+            )?._meta?.ui as any
+          )?.resourceUri,
+        ).toBeDefined();
         const command = await client.callTool({
           name: "lexicon_get_command",
           arguments: { name: "AudioAnalyzer_Analyze" },

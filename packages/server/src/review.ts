@@ -153,13 +153,12 @@ function buildController(runtime: ReviewRuntime) {
       ctx: ServerContext,
       capabilities: { inline: boolean; form: boolean },
     ) {
-      if (capabilities.inline) return { kind: "inline" as const };
       if (!capabilities.form)
         return {
           kind: "unavailable" as const,
           uiUnavailable: true,
           message:
-            "This MCP client did not advertise an inline MCP Apps preview or a native MCP confirmation dialog. Changes remain blocked. Reconnect with UI support; chat confirmation cannot apply the plan.",
+            "Native approval forms are unavailable. Use the saved plan's explicit chat-confirmation flow.",
         };
       if (plan.status !== "pending") return { kind: "resolved" as const, plan };
       const requestState = await codec.mint(

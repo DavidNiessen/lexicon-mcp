@@ -50,15 +50,15 @@ Use the same agent and scope selection with `uninstall` to remove registrations,
 
 ## MCP UI previews
 
-Compatible hosts can render visual change-plan, health-report, and prepared-set previews. Pending plans have Apply/Cancel controls. Clients with MCP form elicitation can use a native review dialog instead. Installation does not add an embedded renderer to a host. Ask the assistant to call `lexicon_ui_status` to check the connected client's capabilities. Clients with neither UI path can inspect text/JSON reports, but cannot apply protected changes. Chat replies do not approve a plan.
+Compatible hosts can render visual change-plan, health-report, and prepared-set previews. These widgets are read-only and have no approval buttons, write credentials, or tool-call bridge. Plan creation and inspection return compact text; `lexicon_preview_change_plan` explicitly shows the saved plan as a widget. The assistant should prepare one plan for a task, including when it affects only one track.
 
-The preview canvas is transparent and follows the host theme and style tokens. Both color schemes are declared before first paint so browsers do not add an opaque iframe backdrop when Claude is dark and the system preference is light, or vice versa. ChatGPT widget state restores the view after iframe remounts when available. Approval credentials are not persisted with that snapshot. Returning to a chat never applies or cancels a plan, and closing a native dialog leaves it pending. If an older preview is blank, white, or its approval has expired, reopen that existing plan after upgrading and restarting the client; old cached templates may retain their original UI code.
+The preview canvas is transparent and follows the host theme and style tokens. Both color schemes are declared before first paint. Widget state restores a bounded view after remounts when supported. Returning to a chat never applies or cancels a plan. If an older preview is blank, white, or still shows obsolete buttons, upgrade, restart the client, and ask to preview the existing saved plan; old chat messages can retain cached UI code.
 
-Rendering and button calls are separate host capabilities. A standard MCP Apps host must advertise `hostCapabilities.serverTools` for Apply/Cancel calls. A display-only host can still show the preview, with actions disabled. The Claude error `IPC not available for MCP tool call` matches an [upstream report about local Code-tab view forwarding](https://github.com/anthropics/claude-ai-mcp/issues/1181); it is not a Lexicon API error.
+Approval is separate from rendering. `lexicon_review_change_plan` requests a native MCP form whenever the connected client advertises form support. The user checks the approval field and submits. Closing, declining, or leaving it unchecked keeps the plan pending. If an advertised native form fails to display, report that host failure instead of switching to chat approval.
 
-The installer automatically sets `LEXICON_APPROVAL_UI=native` for Claude Desktop and Claude Code, including upgrades of existing managed registrations. Their ordinary `lexicon_review_change_plan` call requests a native MCP form even when an Apps renderer is also advertised. This avoids the display-only Code-tab widget bridge and requires no extra assistant tool call. The review tool advertises no widget template in this mode, so it does not create another disabled approval panel. Read-only visual reports remain available. Other agents retain automatic embedded/native capability selection.
+When native forms are not advertised, review opens an exact-plan chat review. The assistant presents the plan and asks for explicit approval or cancellation, then relays the user's reply using `lexicon_decide_change_plan`. The review expires after 10 minutes and binds the plan ID/hash. Read-only mode, stale source checks, and replay protections apply. The server cannot read the transcript; the assistant must faithfully relay the actual user's consent. The chat route is rejected for clients advertising native forms.
 
-The user must check the approval field and submit; dismissing or leaving it unchecked keeps the plan pending. If Claude does not advertise native form support, approval remains blocked with no widget fallback or chat confirmation. `lexicon_ui_status` reports both raw advertised capabilities and the selected `approvalUi`/`mode`. These controls belong to the MCP client, not the Lexicon DJ application. Manually configured clients can set `LEXICON_APPROVAL_UI=native` in the MCP server's environment; `auto` preserves the default capability-based selection. The explicit `lexicon_review_change_plan_native` tool also remains available.
+`lexicon_ui_status` reports the current client's capabilities and selected review path. Installation supplies neither a renderer nor native forms. The former `LEXICON_APPROVAL_UI` environment override is ignored and removed from managed registrations during upgrades; other environment settings are preserved. Old `approvalUi` configuration fields remain accepted for compatibility but no longer affect routing.
 
 ## Manual configuration and development
 
@@ -88,7 +88,7 @@ Set `LEXICON_HTTP_TOKEN` to a high-entropy secret. Run the package with `serve -
 
 ## Configuration
 
-Use `config show` to inspect configuration or `config init` to initialize it. Environment overrides include `LEXICON_BASE_URL`, `LEXICON_DATA_DIR`, and `LEXICON_HTTP_TOKEN`. Plans, audits, and job reports live in user application data. Use a separate data directory for disposable-library tests.
+Use `config show` to inspect configuration or `config init` to initialize it. Environment overrides include `LEXICON_BASE_URL`, `LEXICON_DATA_DIR`, and `LEXICON_HTTP_TOKEN`; `LEXICON_READ_ONLY=true` prohibits writes. Plans, chat-review markers, audits, and job reports live in user application data. Use a separate data directory for disposable-library tests. The deprecated `approvalUi`/`LEXICON_APPROVAL_UI` settings are ignored.
 
 ## Migration from previous releases
 
@@ -96,18 +96,18 @@ The companion plugin and native executable downloads have been removed. If you p
 
 ## Troubleshooting
 
-| Symptom                     | Action                                                                                                                                                 |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npx` is not found          | Install Node.js 24, reopen the terminal, and check `node --version` and `npx --version`.                                                               |
-| Download returns 404        | Copy the exact release command; replace both `VERSION` placeholders.                                                                                   |
-| Scoped package returns 404  | Use the GitHub tarball command; the package name is not currently published to npm.                                                                    |
-| Conflicting registration    | Preview and use `--force` if replacement is intended.                                                                                                  |
-| Invalid agent configuration | Repair the file; malformed configuration is never overwritten.                                                                                         |
-| Connection refused          | Start Lexicon, enable its API, and run `doctor`.                                                                                                       |
-| Agent cannot find Node      | Rerun installation after Node path changes, then restart the agent.                                                                                    |
-| Preview is text only        | Call `lexicon_ui_status`. Use the native MCP review dialog if supported; otherwise reconnect with a UI-capable client. Protected changes stay blocked. |
-| HTTP unauthorized           | Match server and client bearer tokens.                                                                                                                 |
-| Stale plan                  | Inspect changed data and create a fresh preview.                                                                                                       |
-| Mutation timed out          | Inspect current data and saved outcomes before retrying.                                                                                               |
+| Symptom                     | Action                                                                                                                                           |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npx` is not found          | Install Node.js 24, reopen the terminal, and check `node --version` and `npx --version`.                                                         |
+| Download returns 404        | Copy the exact release command; replace both `VERSION` placeholders.                                                                             |
+| Scoped package returns 404  | Use the GitHub tarball command; the package name is not currently published to npm.                                                              |
+| Conflicting registration    | Preview and use `--force` if replacement is intended.                                                                                            |
+| Invalid agent configuration | Repair the file; malformed configuration is never overwritten.                                                                                   |
+| Connection refused          | Start Lexicon, enable its API, and run `doctor`.                                                                                                 |
+| Agent cannot find Node      | Rerun installation after Node path changes, then restart the agent.                                                                              |
+| Preview is text only        | Call `lexicon_preview_change_plan` for the saved plan. Rendering depends on the host; native approval or the explicit chat fallback is separate. |
+| HTTP unauthorized           | Match server and client bearer tokens.                                                                                                           |
+| Stale plan                  | Inspect changed data and create a fresh preview.                                                                                                 |
+| Mutation timed out          | Inspect current data and saved outcomes before retrying.                                                                                         |
 
 Redact private paths, titles, identifiers, and tokens in bug reports. Include versions and a synthetic reproduction.

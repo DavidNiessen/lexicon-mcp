@@ -151,12 +151,19 @@ export async function runInstaller(
       command: process.execPath,
       args: [runtimePath, "serve", "--transport", "stdio"],
     };
-    // Claude's Code surface can render Apps without forwarding their button calls.
-    if (target.id === "claude-desktop" || target.id === "claude-code")
-      entry.env = {
-        ...((entry.env ?? {}) as Record<string, unknown>),
-        LEXICON_APPROVAL_UI: "native",
-      };
+    // Approval follows the connected client's capabilities; retire the old override.
+    if (
+      managed &&
+      entry.env &&
+      typeof entry.env === "object" &&
+      !Array.isArray(entry.env) &&
+      Object.hasOwn(entry.env, "LEXICON_APPROVAL_UI")
+    ) {
+      const env = { ...(entry.env as Record<string, unknown>) };
+      delete env.LEXICON_APPROVAL_UI;
+      if (Object.keys(env).length) entry.env = env;
+      else delete entry.env;
+    }
     if (
       existing !== undefined &&
       !same(existing, entry) &&

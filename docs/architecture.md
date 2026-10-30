@@ -29,15 +29,17 @@ The installer adapts selected agents' native configuration formats, preserves un
 
 ## Preview boundary
 
-MCP UI resources provide previews and explicit Apply/Cancel controls. The app-only confirmation tool requires a short-lived credential delivered only in UI-private metadata. MCP form elicitation supplies a native review dialog where embedded Apps are unavailable, using a signed continuation bound to the exact plan and request. No client capability means no protected apply; text/JSON remains available for inspection. The UI never bypasses stale-plan validation or read-only mode.
+MCP UI resources are read-only presentations. `lexicon_preview_change_plan` is the sole plan-widget renderer; it uses the saved plan and has no write controls, credentials, or tool-call bridge. The renderer works independently of the approval path. Native MCP form elicitation takes precedence whenever advertised, using a signed continuation bound to the exact plan and request.
 
-Planning, inspection, and display are separate. `presentation.ts` declares the tools that render UI; only `lexicon_review_change_plan` renders change plans and issues their credentials. Read-only report display rejects plan-shaped data. Confirmation updates the existing component without advertising another template. The component declares both color schemes before first paint, applies the host's selected scheme and style tokens, and leaves the document canvas transparent.
+When native forms are unavailable, `chat-review.ts` stores a short-lived review marker in `chat-reviews`. A later explicit chat decision binds the plan ID/hash and uses the existing internal approval manager, preserving stale/read-only/replay guards. The caller rejects this route when the client advertises forms. The assistant relays actual chat consent; the server cannot inspect the transcript. Serialized decision records survive fresh HTTP server instances and prevent duplicate writes.
+
+Planning and inspection return compact summaries and bounded detail pages, avoiding large before snapshots in model-visible output. Full authoritative plans remain in storage. `presentation.ts` separates summaries, display, and review guidance. Read-only report display rejects plan-shaped data in favor of the dedicated saved-plan preview. The component declares both color schemes before first paint, follows host styles, and keeps its canvas transparent.
 
 ## Decisions
 
 - Use official Lexicon APIs; avoid database writes and unattended UI automation.
 - Keep stdio as the default and authenticate loopback HTTP.
-- Require explicit UI decisions for protected writes; do not accept chat confirmation as approval.
+- Require a saved plan for every persistent library write. Use native forms when advertised, otherwise an explicit plan-bound chat decision.
 - Ship a Node package with an interactive selected-agent installer.
 - Generate dependency license notices and a build/runtime component inventory.
 - Publish prereleases for successful main builds; manually select stable releases.

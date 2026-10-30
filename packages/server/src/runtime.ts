@@ -18,6 +18,34 @@ import type { Config } from "./config.js";
 import { preserveImportedData } from "./lexicon/preservation.js";
 import { ApprovalManager, type UiConfirmation } from "./approvals.js";
 
+// Keep this list explicit: catalog "low" risk also includes cue/grid and playlist writes.
+const directControls = new Set([
+  "MusicPlayer_Load",
+  "MusicPlayer_Play",
+  "MusicPlayer_Pause",
+  "MusicPlayer_TogglePlay",
+  "MusicPlayer_Next",
+  "MusicPlayer_Previous",
+  "MusicPlayer_Eject",
+  "MusicPlayer_Seek",
+  "MusicPlayer_JumpBeats",
+  "MusicPlayer_JumpSeconds",
+  "MusicPlayer_JumpStart",
+  "MusicPlayer_JumpEnd",
+  "MusicPlayer_ZoomIn",
+  "MusicPlayer_ZoomOut",
+  "MusicPlayer_ToggleMetronome",
+  "Appearance_ZoomIn",
+  "Appearance_ZoomOut",
+  "Navigation_ToggleSidebar",
+  "Navigation_ExpandPlaylists",
+  "Navigation_CollapsePlaylists",
+  "Navigation_ToggleBeatgridControls",
+  "Navigation_ToggleSidepanel",
+  "Navigation_ShowTrackTimeline",
+  "Navigation_HideTrackTimeline",
+]);
+
 export class Runtime {
   readonly client: LexiconClient;
   readonly store: Store;
@@ -197,20 +225,14 @@ export class Runtime {
   }
   requiresPlan(op: Operation) {
     const def = this.operation(op.tool);
-    if (
-      def.method === "DELETE" ||
-      def.path === "/track/location" ||
-      op.input.id === "selected"
-    )
-      return true;
-    if (Object.values(op.input).some((v) => Array.isArray(v) && v.length > 1))
-      return true;
-    if (def.path === "/control") {
-      const command = getCommand(String(op.input.action));
-      if (!command || command.classification === "unsupported") return true;
-      return command.risk !== "low";
-    }
-    return false;
+    if (!def.mutating) return false;
+    if (def.path !== "/control") return true;
+    const command = getCommand(String(op.input.action));
+    return (
+      !command ||
+      command.classification !== "direct" ||
+      !directControls.has(command.name)
+    );
   }
   async call(name: string, input: Record<string, any>): Promise<unknown> {
     if (name === "lexicon_list_commands") return listCommands(input.query);
@@ -229,7 +251,7 @@ export class Runtime {
       name === "lexicon_cancel_change_plan"
     )
       throw new Error(
-        "Plan decisions require Apply or Cancel in the preview UI. Chat tools cannot apply or cancel a plan.",
+        "Plan decisions require explicit user approval through lexicon_review_change_plan. Legacy apply/cancel tools cannot decide a pending plan.",
       );
     if (name === "lexicon_start_job")
       return this.jobs.start(
@@ -263,7 +285,7 @@ export class Runtime {
         reviewRequired: true,
         plan: await this.plans.create(await this.expandSelections([op])),
         instruction:
-          "Display the preview UI. The user must choose Apply or Cancel there; do not ask for text confirmation or apply through chat.",
+          "Show the read-only preview, then call lexicon_review_change_plan to request explicit user approval through native client controls or chat when those controls are unavailable. Keep related edits in one plan; do not execute them individually.",
       };
     return this.store.exclusive(async () => {
       const result = await this.execute(await this.prepare(op));
@@ -288,7 +310,7 @@ export const managementTools = [
   {
     name: "lexicon_plan_changes",
     description:
-      "Preview explicit mutations without writing to Lexicon. Present the plan to the user for review.",
+      "Save proposed mutations and their before values without writing to Lexicon. Combine related edits in one plan, show its read-only preview, then call lexicon_review_change_plan for explicit user approval.",
     inputSchema: z.object({
       operations: z
         .array(
@@ -304,8 +326,12 @@ export const managementTools = [
   {
     name: "lexicon_get_change_plan",
     description:
-      "Inspect saved plan data and outcomes only. This does not open any approval UI. When the user asks to open review, call lexicon_review_change_plan, or lexicon_review_change_plan_native for disabled widget buttons when advertised. Approval belongs to the MCP client; never tell the user to open a dialog inside Lexicon DJ. Never approve for the user.",
-    inputSchema: z.object({ id }),
+      "Inspect a bounded page of saved plan changes and outcomes. This does not request approval. Show the read-only preview and call lexicon_review_change_plan to request native client approval controls, or explicit chat approval when controls are unavailable. Never approve for the user or direct them to Lexicon DJ for this review.",
+    inputSchema: z.object({
+      id,
+      offset: z.number().int().nonnegative().optional(),
+      limit: z.number().int().min(1).max(50).optional(),
+    }),
   },
   {
     name: "lexicon_start_job",

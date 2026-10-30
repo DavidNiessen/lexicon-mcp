@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — Read-only previews and explicit approval
+
+- Make `lexicon_preview_change_plan` the sole read-only plan widget, with no Apply/Cancel controls, credentials, or tool-call bridge.
+- Keep model-visible plan responses compact and bounded, with paginated inspection instead of full snapshots and operation payloads.
+- Require reviewed plans for every persistent library mutation, including individual edits, and prepare one plan per task.
+- Use native MCP forms when advertised; otherwise allow an explicit user chat decision bound to a 10-minute review marker and exact plan hash.
+- Preserve read-only, stale-plan, partial-failure, and replay protections. Document that the assistant relays actual consent and the server cannot verify a chat transcript.
+- Remove the retired installer approval override while preserving unrelated settings. Earlier approval/UI entries below describe historical behavior superseded by this flow.
+
 ## Unreleased — Automatic native approval in Claude
 
 - Configure Claude Desktop/Code installations and upgrades to select native MCP approval automatically.

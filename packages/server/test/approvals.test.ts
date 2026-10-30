@@ -188,7 +188,7 @@ it("rejects model apply and cancellation even with a plan hash or literal yes", 
   ])
     await expect(
       runtime.call(name, { ...grant, decision: "apply", confirmation: "yes" }),
-    ).rejects.toThrow("preview UI");
+    ).rejects.toThrow("explicit user approval");
   expect((await runtime.plans.get(plan.id)).status).toBe("pending");
   expect(
     managementTools.some((tool) => tool.name === "lexicon_cancel_change_plan"),

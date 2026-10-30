@@ -268,7 +268,7 @@ it("preserves user-added read-only environment settings when updating an owned s
   ).toBe("synthetic-cursor-token");
 });
 it.each(["win32", "darwin"] as const)(
-  "upgrades Claude registrations to native approval on %s without losing other settings",
+  "removes the retired Claude approval override on %s without losing other settings",
   async (platform) => {
     const options = { ...(await fixture()), platform };
     const agents = ["claude-desktop", "claude-code"];
@@ -280,6 +280,7 @@ it.each(["win32", "darwin"] as const)(
       config.mcpServers.lexicon.env = {
         LEXICON_READ_ONLY: "true",
         CUSTOM_SETTING: "keep",
+        LEXICON_APPROVAL_UI: "native",
       };
       config.mcpServers.other = { command: "keep" };
       await writeFile(target.path, JSON.stringify(config));
@@ -292,7 +293,6 @@ it.each(["win32", "darwin"] as const)(
       expect(config.mcpServers.lexicon.env).toEqual({
         LEXICON_READ_ONLY: "true",
         CUSTOM_SETTING: "keep",
-        LEXICON_APPROVAL_UI: "native",
       });
       expect(config.mcpServers.other).toEqual({ command: "keep" });
     }
@@ -300,6 +300,28 @@ it.each(["win32", "darwin"] as const)(
     expect(repeat.changes.every((change) => !change.changed)).toBe(true);
   },
 );
+it("removes an env containing only the retired override and preserves an existing empty env", async () => {
+  const options = await fixture();
+  const agents = ["claude-desktop", "claude-code"];
+  await runInstaller({ ...options, agents });
+  const targets = agentTargets("user", options).filter((target) =>
+    agents.includes(target.id),
+  );
+  for (const target of targets) {
+    const config = parseJsonc(await readFile(target.path, "utf8"));
+    expect(config.mcpServers.lexicon.env).toBeUndefined();
+    config.mcpServers.lexicon.env =
+      target.id === "claude-desktop" ? { LEXICON_APPROVAL_UI: "native" } : {};
+    await writeFile(target.path, JSON.stringify(config));
+  }
+  await runInstaller({ ...options, agents });
+  for (const target of targets) {
+    const config = parseJsonc(await readFile(target.path, "utf8"));
+    expect(config.mcpServers.lexicon.env).toEqual(
+      target.id === "claude-desktop" ? undefined : {},
+    );
+  }
+});
 it("refuses unsupported scope/agent selections and unsafe TOML layouts", async () => {
   const options = await fixture();
   await expect(

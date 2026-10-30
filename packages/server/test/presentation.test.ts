@@ -1,33 +1,33 @@
 import { expect, it } from "vitest";
 import { planReview } from "../src/presentation.js";
 
-it("separates a requested MCP widget from verified visibility and exposes a native fallback", () => {
-  const capabilities = { inline: true, form: true };
-  const planned = planReview(
-    "lexicon_plan_changes",
+it("routes planning through a read-only preview before native review", () => {
+  const caps = { inline: true, form: true };
+  expect(
+    planReview("lexicon_plan_changes", "pending", caps, false, false)?.nextTool,
+  ).toBe("lexicon_preview_change_plan");
+  const preview = planReview(
+    "lexicon_preview_change_plan",
     "pending",
-    capabilities,
+    caps,
     false,
     false,
   )!;
-  expect(planned.nextTool).toBe("lexicon_review_change_plan");
-  const opened = planReview(
+  expect(preview.nextTool).toBe("lexicon_review_change_plan");
+  expect(preview.message).toContain("read-only");
+  const reviewed = planReview(
     "lexicon_review_change_plan",
     "pending",
-    capabilities,
+    caps,
     false,
     false,
   )!;
-  expect(opened.nextTool).toBeUndefined();
-  expect(opened.uiVisibility).toBe("not-verified-by-server");
-  expect(opened.approvalLocation).toBe(
-    "MCP client UI, not a dialog in Lexicon DJ",
-  );
-  expect(opened.fallbackTool).toBe("lexicon_review_change_plan_native");
-  expect(opened.message).toContain("working buttons are not verified");
+  expect(reviewed.nextTool).toBeUndefined();
+  expect(reviewed.mode).toBe("native-mcp-dialog");
+  expect(reviewed.decisionTool).toBeUndefined();
 });
 
-it("does not infer an open dialog from saved pending plan data", () => {
+it("does not infer a visible review from inspection", () => {
   const review = planReview(
     "lexicon_get_change_plan",
     "pending",
@@ -35,37 +35,50 @@ it("does not infer an open dialog from saved pending plan data", () => {
     false,
     false,
   )!;
+  expect(review.inspectionOnly).toBe(true);
+  expect(review.uiOpenedByThisCall).toBe(false);
   expect(review.nextTool).toBeUndefined();
-  expect(review.message).toContain("does not prove any approval UI is open");
-  expect(review.fallbackTool).toBe("lexicon_review_change_plan_native");
+  expect(review.message).toContain("this call opened no review UI");
 });
 
-it("describes the explicit native route without pointing to a Lexicon application dialog or another widget", () => {
-  const review = planReview(
-    "lexicon_review_change_plan_native",
+it("requests explicit chat confirmation only after review on clients without native forms", () => {
+  const caps = { inline: false, form: false };
+  const planned = planReview(
+    "lexicon_plan_changes",
     "pending",
-    { inline: false, form: true },
+    caps,
     false,
     false,
   )!;
-  expect(review.mode).toBe("native-mcp-dialog");
-  expect(review.nextTool).toBeUndefined();
-  expect(review.fallbackTool).toBeUndefined();
-  expect(review.message).toContain("in the chat client, not inside Lexicon");
-});
-
-it("explains missing native forms without pretending a rendered widget has working controls", () => {
-  const review = planReview(
-    "lexicon_review_change_plan_native",
+  expect(planned.nextTool).toBe("lexicon_review_change_plan");
+  expect(planned.chatConfirmationRequired).toBeUndefined();
+  const reviewed = planReview(
+    "lexicon_review_change_plan",
     "pending",
-    { inline: false, form: false },
+    caps,
     false,
     false,
   )!;
-  expect(review.mode).toBe("unavailable");
-  expect(review.message).toContain(
-    "does not advertise native MCP form dialogs",
-  );
-  expect(review.nextTool).toBeUndefined();
-  expect(review.uiVisibility).toBe("not-verified-by-server");
+  expect(reviewed.mode).toBe("chat-confirmation");
+  expect(reviewed.chatConfirmationRequired).toBe(true);
+  expect(reviewed.decisionTool).toBe("lexicon_decide_change_plan");
+  expect(reviewed.message).toContain("wait for their explicit reply");
+});
+
+it("never treats a dismissal or read-only state as chat approval", () => {
+  for (const [readOnly, dismissed] of [
+    [false, true],
+    [true, false],
+  ]) {
+    const review = planReview(
+      "lexicon_review_change_plan",
+      "pending",
+      { inline: true, form: false },
+      readOnly!,
+      dismissed!,
+    )!;
+    expect(review.nextTool).toBeUndefined();
+    expect(review.decisionTool).toBeUndefined();
+    expect(review.chatConfirmationRequired).toBeUndefined();
+  }
 });

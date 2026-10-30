@@ -12,7 +12,7 @@ DJs use a local LLM client to inspect and manage an existing Lexicon library.
 
 ## Product Purpose
 
-The user requested MCP UI previews. Preview surfaces expose proposed changes, library reports, and prepared sets before the assistant proceeds.
+Preview surfaces expose proposed changes, library reports, and prepared sets. Approval is a separate native MCP form or an explicit chat exchange when native forms are unavailable.
 
 ## Operating Context
 
@@ -20,7 +20,7 @@ The interface is an embedded MCP Apps or MCP-UI resource. It shares tool results
 
 ## Capabilities and Constraints
 
-Filtering and disclosure are read-only. Apply and Cancel use an app-only tool with a short-lived grant bound to the displayed plan. No change runs until a user clicks a confirmation control. Text chat confirmation cannot apply a plan. Library metadata is untrusted. No external scripts, fonts, images, or network calls are needed to render a preview.
+Every preview is read-only. Filtering and disclosure work locally; the widget has no Apply/Cancel buttons, write credentials, or tool-call bridge. Native MCP forms take precedence when advertised. Otherwise, the assistant presents the exact saved plan and faithfully relays the user's explicit approval or cancellation through the chat decision tool. The server cannot inspect the chat transcript. All persistent library writes require a plan, including single-track edits. Library metadata is untrusted. No external scripts, fonts, images, or network calls are needed to render a preview.
 
 ## Product Principles
 

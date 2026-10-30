@@ -1,21 +1,14 @@
-// Approval credentials arrive only in UI-private metadata; never put them in the DOM.
+// This component only displays data. Approval belongs to the chat client.
 export const previewClient = String.raw`
 (() => {
   const root = document.getElementById('preview');
   const search = document.getElementById('filter');
   const status = document.getElementById('row-status');
-  const apply = document.getElementById('apply-changes');
-  const cancel = document.getElementById('cancel-changes');
-  const feedback = document.getElementById('approval-status');
-  const controls = document.getElementById('approval-controls');
   const pending = new Map();
-  let model, grant, inFlight = false, ready = false, sequence = 0;
-  let toolCallAvailable = false, hostBridgeFailed = false;
+  let model, ready = false, sequence = 0;
   let authoritative = false, restoring = false, savedSnapshot, lastHeight = 0;
   const text = value => String(value ?? '—').slice(0, 401);
   const node = (tag, value) => { const item = document.createElement(tag); if (value !== undefined) item.textContent = text(value); return item; };
-  const expires = value => typeof value === 'number' ? value : Date.parse(value);
-  const bridgeFailure = "Claude's widget tool-call bridge is unavailable (IPC unavailable). This preview cannot confirm the operation. Ask your assistant to open the saved plan with native MCP review if supported. Inspect the saved plan before trying again. This view will not retry automatically.";
   const own = (value, key) => value && Object.prototype.hasOwnProperty.call(value, key);
   const final = value => ['completed','cancelled','failed','interrupted'].includes(value?.plan?.status);
   function snapshot(value) {
@@ -30,7 +23,7 @@ export const previewClient = String.raw`
   }
   function persist() {
     if (restoring || !model || typeof window.openai?.setWidgetState !== 'function') return;
-    // A presentation cache is never approval authority. In particular, never persist grant.
+    // Persist only bounded presentation data supplied by snapshot().
     const state={privateContent:{lexicon:{version:1,preview:snapshot(model),filter:search.value.slice(0,200),detailsOpen:!document.getElementById('details').hidden}}};
     const serialized=JSON.stringify(state);
     if (serialized===savedSnapshot) return;
@@ -56,26 +49,6 @@ export const previewClient = String.raw`
     lastHeight=height;
     if (typeof window.openai?.notifyIntrinsicHeight === 'function') window.openai.notifyIntrinsicHeight(height);
     else if (window.parent !== window) window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/size-changed',params:{height}},'*');
-  }
-  function available() {
-    return ready && toolCallAvailable && !hostBridgeFailed && !inFlight && model?.plan?.status === 'pending' && grant &&
-      grant.id === model.plan.id && grant.hash === model.plan.hash &&
-      typeof grant.token === 'string' && grant.token.length === 64 && expires(grant.expiresAt) > Date.now();
-  }
-  function buttons(message) {
-    controls.hidden = !model?.plan;
-    apply.disabled = cancel.disabled = !available();
-    apply.textContent = inFlight ? 'Applying…' : 'Apply changes';
-    if (message) feedback.textContent = text(message);
-    else if (inFlight) feedback.textContent = 'Waiting for the server. Do not close this preview.';
-    else if (model?.plan?.status === 'completed') feedback.textContent = 'Changes applied.';
-    else if (model?.plan?.status === 'cancelled') feedback.textContent = 'Plan cancelled. No changes were applied.';
-    else if (['failed','interrupted','applying'].includes(model?.plan?.status)) feedback.textContent = 'Inspect the recorded outcomes and reconcile this plan before making further changes.';
-    else if (hostBridgeFailed) feedback.textContent = bridgeFailure;
-    else if (!ready) feedback.textContent = 'This client has not connected the confirmation UI. Changes remain blocked.';
-    else if (!toolCallAvailable) feedback.textContent = 'This host can display previews but does not advertise MCP tool-call support. Ask your assistant to open the saved plan with a native MCP approval form if supported. The widget approval controls are disabled.';
-    else if (!available()) feedback.textContent = 'No current approval is available. Reopen the plan preview to refresh it.';
-    else feedback.textContent = 'Apply changes once to approve this exact preview. No chat confirmation is needed.';
   }
   function filter() {
     const query = search.value.toLocaleLowerCase();
@@ -115,7 +88,7 @@ export const previewClient = String.raw`
     table.append(body); root.replaceChildren(table);
     document.getElementById('truncation').hidden = !(value.total > value.rows.length);
     search.disabled = value.rows.length === 0;
-    filter(); buttons(); resize(); persist();
+    filter(); resize(); persist();
   }
   function theme(context) {
     const root=document.documentElement;
@@ -138,10 +111,9 @@ export const previewClient = String.raw`
       if(value.result && (value.result._meta || value.result.structuredContent || value.result.content)) visit(value.result,depth+1);
     }
     visit(result);
-    let preview,plan,hasGrant=false,nextGrant;
+    let preview,plan;
     for(const part of parts) {
       if(own(part,'lexicon/preview')) preview=part['lexicon/preview'];
-      if(own(part,'lexicon/approval')) {hasGrant=true;nextGrant=part['lexicon/approval'];}
       const data=part.structuredContent?.result;
       if(data) plan=data.plan ?? data;
       if(!preview && Array.isArray(part.content)) {
@@ -157,56 +129,27 @@ export const previewClient = String.raw`
         render({...model,status:plan.status,plan:{...model.plan,status:plan.status}});
       }
     }
-    if(hasGrant) grant=nextGrant;
-    if(final(model) || (grant && (grant.id!==model?.plan?.id || grant.hash!==model?.plan?.hash))) grant=undefined;
-    buttons();
   }
   function globals(value=window.openai) {
-    if(typeof window.openai?.callTool==='function') {ready=true;if(!hostBridgeFailed)toolCallAvailable=true;}
+    if(window.openai) ready=true;
     theme(value);
     restore(value?.widgetState ?? window.openai?.widgetState);
     output({structuredContent:value?.toolOutput ?? window.openai?.toolOutput,_meta:value?.toolResponseMetadata ?? window.openai?.toolResponseMetadata});
-    buttons();resize(true);
+    resize(true);
   }
   function visible() {
     if(document.visibilityState==='hidden') return;
     globals();resize(true);
   }
-  function rpc(method, params, timeout = 120000) {
+  function rpc(method, params, timeout = 15000) {
     if (window.parent === window) return Promise.reject(new Error('No MCP Apps host is connected.'));
     const id = 'lexicon-ui-' + (++sequence);
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => { pending.delete(id); reject(new Error('The server response timed out. Inspect the plan before retrying.')); }, timeout);
+      const timer = setTimeout(() => { pending.delete(id); reject(new Error('The preview host did not respond.')); }, timeout);
       pending.set(id,{resolve,reject,timer});
       window.parent.postMessage({jsonrpc:'2.0',id,method,params},'*');
     });
   }
-  async function decide(decision) {
-    if (!available()) return;
-    const current = grant;
-    let message;
-    inFlight = true; grant = undefined; buttons(decision === 'cancel' ? 'Cancelling this plan…' : undefined);
-    try {
-      const args = {id:current.id,hash:current.hash,token:current.token,decision};
-      const result = typeof window.openai?.callTool === 'function'
-        ? await window.openai.callTool('lexicon_confirm_change_plan',args)
-        : await rpc('tools/call',{name:'lexicon_confirm_change_plan',arguments:args});
-      if (result?.isError) throw new Error(result.content?.find(item=>item.type==='text')?.text ?? 'The server rejected this approval.');
-      output(result);
-      if (model?.plan?.status === 'pending') message = 'Approval returned no final plan state. Inspect the plan before retrying.';
-    } catch (error) {
-      grant = undefined;
-      const detail=String(error?.message ?? 'Approval failed. Inspect the plan before retrying.');
-      if(detail.includes('IPC not available for MCP tool call')) {
-        hostBridgeFailed=true;toolCallAvailable=false;message=bridgeFailure;
-      } else message=detail;
-    } finally {
-      inFlight = false;
-      buttons(message);
-    }
-  }
-  apply.addEventListener('click',()=>decide('apply'));
-  cancel.addEventListener('click',()=>decide('cancel'));
   search.addEventListener('input', ()=>{filter();persist();});
   document.getElementById('show-details').addEventListener('click', () => {
     const details = document.getElementById('details'); details.hidden = !details.hidden;
@@ -247,11 +190,10 @@ export const previewClient = String.raw`
   globals();
   if(!ready && window.parent !== window) {
     rpc('ui/initialize',{appInfo:{name:'Lexicon library preview',version:'1.0.0'},appCapabilities:{},protocolVersion:'2026-01-26'},15000)
-      .then(result=>{ready=true;const proxy=result?.hostCapabilities?.serverTools;toolCallAvailable=!hostBridgeFailed && Boolean(proxy && typeof proxy==='object' && !Array.isArray(proxy));theme(result?.hostContext);window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized',params:{}},'*');buttons();resize();})
-      .catch(()=>{if(!ready)buttons('This client does not provide the MCP Apps confirmation bridge. Changes remain blocked.');});
+      .then(result=>{ready=true;theme(result?.hostContext);window.parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized',params:{}},'*');resize();})
+      .catch(()=>{/* Embedded data stays readable without a host bridge. */});
   }
   window.parent.postMessage({type:'ui-lifecycle-iframe-ready'},'*');
   if (typeof ResizeObserver === 'function') new ResizeObserver(()=>resize()).observe(document.body);
-  setInterval(()=>{if(!ready && typeof window.openai?.callTool==='function')globals();if(grant && expires(grant.expiresAt)<=Date.now()){grant=undefined;buttons('This approval expired. Reopen the plan preview to refresh it.');}},1000);
-  buttons();
+  setInterval(()=>{if(!ready && window.openai)globals();},1000);
 })();`;
