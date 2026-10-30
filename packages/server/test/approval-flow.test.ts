@@ -145,6 +145,25 @@ it("does not let a client with native forms bypass native approval using chat de
   expect(f.writes()).toBe(0);
 });
 
+it("can switch a client advertising forms to chat review when its native controls are unavailable", async () => {
+  const f = await connected(true, true, true);
+  const plan = await f.runtime.plans.create(operations);
+  const dialog = vi.fn(async () => ({ action: "cancel" as const }));
+  f.client.setRequestHandler("elicitation/create", dialog);
+  expect((await decide(f, plan)).isError).toBe(true);
+  const review = await f.client.callTool({
+    name: "lexicon_review_change_plan",
+    arguments: { id: plan.id, approval: "chat" },
+  });
+  expect(resultOf(review).review.mode).toBe("chat-confirmation");
+  expect(resultOf(review).review.chatConfirmationRequired).toBe(true);
+  expect(dialog).not.toHaveBeenCalled();
+  expect(f.writes()).toBe(0);
+  const applied = await decide(f, plan);
+  expect(resultOf(applied).status).toBe("completed");
+  expect(f.writes()).toBe(1);
+});
+
 it("cannot bypass approval with 117 separate MCP single-track updates", async () => {
   const f = await connected();
   const request = vi.mocked(f.runtime.client.request);

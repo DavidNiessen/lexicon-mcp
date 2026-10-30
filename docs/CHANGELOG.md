@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Deliberate chat review for unavailable native controls
+
+- Add `approval: "auto" | "chat"` to ordinary review, preserving native forms as the automatic default when advertised.
+- Let assistants deliberately open chat review when users report missing/broken native controls or explicitly request chat approval, even on clients advertising forms.
+- Require the prior exact-plan chat review marker and the user's actual explicit reply before a chat decision; native dismissal never triggers fallback automatically.
+
 ## Unreleased — Read-only previews and explicit approval
 
 - Make `lexicon_preview_change_plan` the sole read-only plan widget, with no Apply/Cancel controls, credentials, or tool-call bridge.

@@ -72,7 +72,7 @@ Then try a report or a reviewed change:
 
 > Prepare one plan to add an existing tag to selected tracks, show its preview, and request approval.
 
-Plan creation and inspection return compact text summaries. The assistant can show **one read-only preview widget**, then request approval separately. A client advertising native MCP forms opens its own confirmation form. Otherwise, the assistant asks you to approve or cancel the exact plan in chat and relays your answer. The preview has no write buttons and never applies changes by itself.
+Plan creation and inspection return compact text summaries. The assistant can show **one read-only preview widget**, then request approval separately. Review uses the client's native MCP form by default when advertised, or asks you to approve/cancel the exact plan in chat otherwise. If the native controls are missing or broken, tell the assistant; it can deliberately open a chat review for that saved plan. It must then ask for your explicit decision and relay your answer. The preview never applies changes by itself.
 
 ## What you can do
 
@@ -107,7 +107,7 @@ Other MCP servers and saved library reports remain separate from registration. S
 | Existing registration conflicts       | Review a dry run and the [replacement instructions](docs/installation.md); use `--force` only when you intend to replace that registration. |
 | Preview is stale or a write times out | Inspect the saved plan and current data before proposing another change. Do not blindly retry.                                              |
 
-Previews no longer use widget tool-call bridges, so Claude's display-only Code-tab widgets can show the proposed values without disabled approval buttons. `lexicon_review_change_plan` selects a native MCP form whenever the connected client advertises one; otherwise it opens an exact-plan chat review. If a native form is advertised but fails to appear, the assistant must report that failure rather than bypass it through chat. Update and restart the client to load this flow. The installer removes the former `LEXICON_APPROVAL_UI` override while preserving other settings.
+Previews no longer use widget tool-call bridges, so Claude's display-only Code-tab widgets can show proposed values without disabled approval buttons. `lexicon_review_change_plan` defaults to native forms when advertised and chat review otherwise. When you report missing/broken native controls or request chat approval, the assistant can call it with `approval: "chat"` to open a fresh exact-plan chat review, then ask for your explicit approval or cancellation. Closing a native form alone never triggers this switch. Update and restart the client to load this flow. The installer removes the former `LEXICON_APPROVAL_UI` override while preserving other settings.
 
 `lexicon_get_change_plan` only inspects data. `lexicon_preview_change_plan` shows the read-only widget, and `lexicon_review_change_plan` requests approval. Approval belongs to the MCP client or the explicit chat fallback, never a separate review window inside Lexicon DJ.
 
