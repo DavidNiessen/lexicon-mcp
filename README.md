@@ -4,10 +4,6 @@ Manage your [Lexicon DJ](https://www.lexicondj.com/) library from an MCP-compati
 
 Runs locally through Lexicon's documented Local API. No companion plugin or native installer is needed.
 
-![Lexicon MCP preview in Claude showing a bulk tag update with before/after values and Apply/Cancel controls](docs/images/library-preview.png)
-
-_A change-plan preview in Claude. Embedded widgets depend on your client's MCP Apps support._
-
 ## Quick start
 
 ### 1. Prepare Lexicon and Node.js
