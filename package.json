@@ -1,0 +1,31 @@
+{
+  "name": "lexicon-mcp-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@10.28.2",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "vitest run",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && node scripts/check-architecture.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint packages/server/src packages/server/test",
+    "typecheck": "tsc --noEmit",
+    "package": "node scripts/package.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "typescript": "5.9.3",
+    "vitest": "4.0.18",
+    "eslint": "9.39.2",
+    "typescript-eslint": "8.53.1",
+    "prettier": "3.8.1",
+    "esbuild": "0.27.2",
+    "postject": "1.0.0-alpha.6",
+    "fflate": "0.8.2"
+  }
+}

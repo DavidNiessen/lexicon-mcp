@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+packages/server/src/lexicon/generated/
+artifacts/
+dist/
+node_modules/
+work/
