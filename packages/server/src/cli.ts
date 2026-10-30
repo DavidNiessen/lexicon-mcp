@@ -5,6 +5,8 @@ import { Runtime } from "./runtime.js";
 import { createServer } from "./mcp.js";
 import { serveHttp } from "./http.js";
 import { VERSION } from "./version.js";
+import { resolve } from "node:path";
+import { runInstaller } from "./installer/index.js";
 
 async function main() {
   const { values, positionals } = parseArgs({
@@ -14,6 +16,11 @@ async function main() {
       port: { type: "string" },
       version: { type: "boolean" },
       help: { type: "boolean" },
+      agent: { type: "string", multiple: true },
+      scope: { type: "string" },
+      "dry-run": { type: "boolean" },
+      force: { type: "boolean" },
+      yes: { type: "boolean", short: "y" },
     },
   });
   if (values.version) {
@@ -22,8 +29,25 @@ async function main() {
   }
   if (values.help || !positionals.length) {
     console.log(
-      "lexicon-mcp serve [--transport stdio|http] [--port 48625]\nlexicon-mcp doctor\nlexicon-mcp config init|show\nEnvironment: LEXICON_BASE_URL, LEXICON_DATA_DIR, LEXICON_HTTP_TOKEN, LEXICON_READ_ONLY",
+      "lexicon-mcp install|uninstall [--agent NAME] [--scope user|project] [--dry-run] [--yes] [--force]\nlexicon-mcp serve [--transport stdio|http] [--port 48625]\nlexicon-mcp doctor\nlexicon-mcp config init|show\nEnvironment: LEXICON_BASE_URL, LEXICON_DATA_DIR, LEXICON_HTTP_TOKEN, LEXICON_READ_ONLY",
     );
+    return;
+  }
+  if (["install", "uninstall"].includes(positionals[0] ?? "")) {
+    if (values.scope && !["user", "project"].includes(values.scope))
+      throw new Error("Scope must be user or project.");
+    await runInstaller({
+      agents: values.agent
+        ?.flatMap((value) => value.split(","))
+        .filter(Boolean),
+      scope: values.scope as "user" | "project",
+      dryRun: values["dry-run"],
+      force: values.force,
+      yes: values.yes,
+      uninstall: positionals[0] === "uninstall",
+      bundlePath: resolve(process.argv[1] ?? ""),
+      dataDir: process.env.LEXICON_DATA_DIR,
+    });
     return;
   }
   let config = await loadConfig();

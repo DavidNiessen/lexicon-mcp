@@ -9,31 +9,26 @@ import {
   readdir,
   writeFile,
   rename,
+  rm,
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { zipSync, strToU8, unzipSync } from "fflate";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const manifest = JSON.parse(
   await readFile(path.join(root, "packages/server/package.json"), "utf8"),
 );
-const platform = `${process.platform}-${process.arch}`;
-const out = path.join(root, "release", `${manifest.version}-${platform}`);
-const stage = path.join(
-  root,
-  "work",
-  "package",
-  `${manifest.version}-${platform}`,
-);
+const out = path.join(root, "release", manifest.version);
+const stage = path.join(root, "work", "package");
 await mkdir(out, { recursive: true });
 await mkdir(stage, { recursive: true });
-function run(command, args, cwd = root) {
+function run(command, args, cwd = root, env = process.env) {
   const result = spawnSync(command, args, {
     cwd,
     encoding: "utf8",
     shell: false,
+    env,
   });
   if (result.status !== 0)
     throw new Error(
@@ -41,44 +36,14 @@ function run(command, args, cwd = root) {
     );
   return result.stdout;
 }
-const stamp = new Date("2026-01-01T00:00:00Z");
-function zip(files) {
-  return zipSync(
-    Object.fromEntries(
-      Object.entries(files).map(([name, bytes]) => [
-        name,
-        [bytes, { mtime: stamp }],
-      ]),
-    ),
-  );
-}
-const pluginDir = path.join(root, "packages/companion/plugin");
-const pluginFiles = {};
-for (const name of await readdir(pluginDir))
-  pluginFiles[name] = strToU8(
-    (await readFile(path.join(pluginDir, name), "utf8")).replaceAll(
-      "\r\n",
-      "\n",
-    ),
-  );
-pluginFiles["LICENSE"] = strToU8(
-  (await readFile(path.join(root, "LICENSE"), "utf8")).replaceAll("\r\n", "\n"),
-);
-const companionZip = zip(pluginFiles);
-const archive = unzipSync(companionZip);
-const pluginConfig = JSON.parse(
-  new TextDecoder().decode(archive["config.json"]),
-);
-for (const action of pluginConfig.actions) {
-  if (!archive[`${action.id}.js`])
-    throw new Error(`Missing plugin action ${action.id}`);
-}
-await writeFile(
-  path.join(out, `lexicon-mcp-companion-${manifest.version}.zip`),
-  companionZip,
-);
-
-// All runtime dependencies are bundled. Package the bundle with its own license and guide.
+const npmLocation = process.env.npm_execpath?.endsWith("npm-cli.js")
+  ? process.env.npm_execpath
+  : path.join(
+      path.dirname(process.execPath),
+      process.platform === "win32"
+        ? "node_modules/npm/bin/npm-cli.js"
+        : "../lib/node_modules/npm/bin/npm-cli.js",
+    );
 const npmStage = await mkdtemp(path.join(stage, "npm-"));
 await mkdir(path.join(npmStage, "dist"), { recursive: true });
 for (const file of (
@@ -89,6 +54,7 @@ for (const file of (
     path.join(npmStage, "dist", file),
   );
 }
+await chmod(path.join(npmStage, "dist/cli.cjs"), 0o755);
 for (const file of ["README.md", "LICENSE"])
   await copyFile(path.join(root, file), path.join(npmStage, file));
 await writeFile(
@@ -106,6 +72,7 @@ await writeFile(
         "dist",
         "README.md",
         "LICENSE",
+        "INSTALL.md",
         "THIRD-PARTY-NOTICES.txt",
         "sbom.cdx.json",
       ],
@@ -118,41 +85,15 @@ await writeFile(
     2,
   ),
 );
-// npm's JS entrypoint avoids shell interpolation on Windows.
-const npmLocation = process.env.npm_execpath?.endsWith("npm-cli.js")
-  ? process.env.npm_execpath
-  : path.join(
-      path.dirname(process.execPath),
-      process.platform === "win32"
-        ? "node_modules/npm/bin/npm-cli.js"
-        : "../lib/node_modules/npm/bin/npm-cli.js",
-    );
-
+const url = `https://github.com/DavidNiessen/lexicon-mcp/releases/download/v${manifest.version}/lexicon-mcp-${manifest.version}.tgz`;
+const installGuide = `# Install Lexicon MCP ${manifest.version}\n\nInstall Node.js 24, start Lexicon, and enable its Local API in Settings > Integrations.\n\nRun this command and select your agents:\n\n\`\`\`sh\nnpx --yes ${url} install\n\`\`\`\n\nPreview a project installation without changes:\n\n\`\`\`sh\nnpx --yes ${url} install --agent cursor --scope project --dry-run --yes\n\`\`\`\n\nThe installer preserves existing agent settings, creates backups before changes, and installs the bundled Node program in persistent user storage. Restart selected agents after installation. MCP UI previews appear in compatible hosts; other clients retain text/JSON results.\n\nSee https://github.com/DavidNiessen/lexicon-mcp/blob/main/docs/installation.md for agent-specific paths, scope support, and updates.\n`;
+await writeFile(path.join(out, "INSTALL.md"), installGuide);
+await writeFile(path.join(npmStage, "INSTALL.md"), installGuide);
 const notices = [
   "Lexicon MCP — MIT",
   await readFile(path.join(root, "LICENSE"), "utf8"),
 ];
-// SEA archives redistribute Node itself, including its bundled third-party components.
-const nodeLicenseResponse = await fetch(
-  `https://raw.githubusercontent.com/nodejs/node/${process.version}/LICENSE`,
-  { signal: AbortSignal.timeout(15000) },
-);
-if (!nodeLicenseResponse.ok)
-  throw new Error(
-    "Cannot retrieve the license notices for the bundled Node runtime.",
-  );
-notices.push(
-  `Node.js ${process.version} runtime and bundled components`,
-  await nodeLicenseResponse.text(),
-);
-const components = [
-  {
-    type: "application",
-    name: "node",
-    version: process.versions.node,
-    licenses: [{ license: { id: "MIT" } }],
-  },
-];
+const components = [];
 const pnpmDir = path.join(root, "node_modules/.pnpm");
 for (const entry of await readdir(pnpmDir).catch(() => [])) {
   const modules = path.join(pnpmDir, entry, "node_modules");
@@ -196,20 +137,13 @@ for (const entry of await readdir(pnpmDir).catch(() => [])) {
       );
       for (const license of (await readdir(dir)).filter((file) =>
         /^(licen[cs]e|copying|notice)(\.|$)/i.test(file),
-      )) {
+      ))
         notices.push(
           await readFile(path.join(dir, license), "utf8").catch(() => ""),
         );
-      }
     }
   }
 }
-const runtimeLicense = await fetch(
-  `https://raw.githubusercontent.com/nodejs/node/${process.version}/LICENSE`,
-);
-if (!runtimeLicense.ok)
-  throw new Error("Could not obtain the exact bundled Node license.");
-notices.push(`\nNode.js ${process.version}\n${await runtimeLicense.text()}`);
 const sbom = JSON.stringify(
   {
     bomFormat: "CycloneDX",
@@ -227,93 +161,90 @@ const sbom = JSON.stringify(
   null,
   2,
 );
-const noticeText = notices.join("\n");
-await writeFile(path.join(out, "sbom.cdx.json"), sbom);
-await writeFile(path.join(out, "THIRD-PARTY-NOTICES.txt"), noticeText);
-await writeFile(path.join(npmStage, "sbom.cdx.json"), sbom);
-await writeFile(path.join(npmStage, "THIRD-PARTY-NOTICES.txt"), noticeText);
+for (const target of [out, npmStage]) {
+  await writeFile(path.join(target, "sbom.cdx.json"), sbom);
+  await writeFile(
+    path.join(target, "THIRD-PARTY-NOTICES.txt"),
+    notices.join("\n"),
+  );
+}
 run(
   process.execPath,
   [npmLocation, "pack", "--pack-destination", out, "--ignore-scripts"],
   npmStage,
 );
 const packedName = `${manifest.name.replace(/^@/, "").replaceAll("/", "-")}-${manifest.version}.tgz`;
-await rename(
-  path.join(out, packedName),
-  path.join(out, packedName.replace(/\.tgz$/, `-${platform}.tgz`)),
+const tarball = path.join(out, `lexicon-mcp-${manifest.version}.tgz`);
+await rename(path.join(out, packedName), tarball);
+await copyFile(tarball, path.join(out, "lexicon-mcp.tgz"));
+// npm exec is npx's implementation. Smoke the actual tarball in an isolated cache and project.
+const smoke = await mkdtemp(path.join(stage, "npx-smoke-"));
+const env = {
+  ...process.env,
+  npm_config_cache: path.join(smoke, "cache"),
+  LEXICON_DATA_DIR: path.join(smoke, "data"),
+  LEXICON_READ_ONLY: "true",
+};
+const project = path.join(smoke, "project");
+await mkdir(project);
+const args = [
+  npmLocation,
+  "exec",
+  "--yes",
+  `--package=${tarball}`,
+  "--",
+  "lexicon-mcp",
+];
+if (
+  !run(process.execPath, [...args, "--version"], project, env).includes(
+    manifest.version,
+  )
+)
+  throw new Error("npx package version smoke failed");
+if (
+  !run(process.execPath, [...args, "--help"], project, env).includes("install")
+)
+  throw new Error("Installer help is absent");
+run(
+  process.execPath,
+  [
+    ...args,
+    "install",
+    "--agent",
+    "cursor",
+    "--scope",
+    "project",
+    "--dry-run",
+    "--yes",
+  ],
+  project,
+  env,
 );
-
-if (!["win32-x64", "darwin-arm64", "darwin-x64"].includes(platform)) {
-  console.log(
-    `Skipping desktop executable on ${platform}; Node package and plugin are available.`,
-  );
-} else {
-  const executable = path.join(
-    stage,
-    process.platform === "win32" ? "lexicon-mcp.exe" : "lexicon-mcp",
-  );
-  const blob = path.join(stage, "sea.blob");
-  const config = path.join(stage, "sea.json");
-  await writeFile(
-    config,
-    JSON.stringify({
-      main: path.join(root, "packages/server/dist/cli.cjs"),
-      output: blob,
-      disableExperimentalSEAWarning: true,
-      useSnapshot: false,
-      useCodeCache: false,
-    }),
-  );
-  run(process.execPath, ["--experimental-sea-config", config]);
-  await copyFile(process.execPath, executable);
-  if (process.platform === "darwin")
-    run("codesign", ["--remove-signature", executable]);
-  const postject = path.join(root, "node_modules/postject/dist/cli.js");
-  const args = [
-    postject,
-    executable,
-    "NODE_SEA_BLOB",
-    blob,
-    "--sentinel-fuse",
-    "NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2",
-  ];
-  if (process.platform === "darwin")
-    args.push("--macho-segment-name", "NODE_SEA");
-  run(process.execPath, args);
-  await chmod(executable, 0o755);
-  if (process.platform === "darwin")
-    run("codesign", ["--sign", "-", executable]);
-  const versionOutput = run(executable, ["--version"]);
-  if (!versionOutput.includes(manifest.version))
-    throw new Error("Packaged executable version smoke check failed.");
-  run(process.execPath, [
-    path.join(root, "scripts/check-executable.mjs"),
-    executable,
-  ]);
-  const files = {
-    [path.basename(executable)]: [
-      await readFile(executable),
-      { mtime: stamp, attrs: 0o100755 << 16 },
-    ],
-    "README.md": strToU8(await readFile(path.join(root, "README.md"), "utf8")),
-    LICENSE: strToU8(await readFile(path.join(root, "LICENSE"), "utf8")),
-    "THIRD-PARTY-NOTICES.txt": strToU8(noticeText),
-    "sbom.cdx.json": strToU8(sbom),
-  };
-  await writeFile(
-    path.join(out, `lexicon-mcp-${manifest.version}-${platform}.zip`),
-    zipSync(files),
-  );
-}
+if (
+  (await readdir(project)).length ||
+  (await readdir(path.join(smoke, "data")).then(
+    () => true,
+    () => false,
+  ))
+)
+  throw new Error("Installer dry-run wrote configuration or runtime files");
+// Remove only the exact generated smoke directory, within this project's work directory.
+if (!smoke.startsWith(stage + path.sep))
+  throw new Error("Invalid smoke cleanup path");
+await rm(smoke, { recursive: true, force: true });
+run(process.execPath, [
+  path.join(root, "scripts/check-npx.mjs"),
+  tarball,
+  npmLocation,
+]);
 const sums = [];
 for (const file of (await readdir(out))
   .filter((name) => name !== "SHA256SUMS")
-  .sort()) {
+  .sort())
   sums.push(
     `${createHash("sha256")
       .update(await readFile(path.join(out, file)))
       .digest("hex")}  ${file}`,
   );
-}
-await writeFile(path.join(out, "SHA256SUMS"), `${sums.join(os.EOL)}${os.EOL}`);
-console.log(`Release artifacts: ${out}`);
+await writeFile(path.join(out, "SHA256SUMS"), sums.join("\n") + "\n");
+console.log(`Platform-neutral npx package verified: ${out}`);

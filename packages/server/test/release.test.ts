@@ -171,12 +171,7 @@ it("stamps all manifests and the runtime with one validated version", async () =
   const cwd = await mkdtemp(join(tmpdir(), "lexicon-release-"));
   folders.push(cwd);
   await mkdir(join(cwd, "packages/server/src"), { recursive: true });
-  await mkdir(join(cwd, "packages/companion"), { recursive: true });
-  const paths = [
-    "package.json",
-    "packages/server/package.json",
-    "packages/companion/package.json",
-  ];
+  const paths = ["package.json", "packages/server/package.json"];
   for (const path of paths)
     await writeFile(
       join(cwd, path),

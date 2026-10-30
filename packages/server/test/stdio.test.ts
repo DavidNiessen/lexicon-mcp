@@ -17,6 +17,7 @@ it("supports current and legacy stdio SDK clients with clean protocol output", a
       outfile: entry,
       bundle: true,
       format: "cjs",
+      mainFields: ["module", "main"],
       platform: "node",
       target: "node24",
       logLevel: "silent",

@@ -1,7 +1,0 @@
-{
-  "name": "@davidniessen/lexicon-mcp-companion",
-  "version": "0.1.0",
-  "private": true,
-  "description": "Optional read-only Lexicon actions for Lexicon MCP",
-  "license": "MIT"
-}

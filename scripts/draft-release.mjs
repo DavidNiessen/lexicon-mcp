@@ -38,7 +38,13 @@ async function collect(dir) {
 const uploads = [];
 const sums = [];
 for (const file of await collect("work/release-artifacts")) {
-  if (!/\.(zip|tgz)$/.test(file)) continue;
+  if (
+    !/\.tgz$/.test(file) &&
+    !["INSTALL.md", "sbom.cdx.json", "THIRD-PARTY-NOTICES.txt"].includes(
+      path.basename(file),
+    )
+  )
+    continue;
   const name = path.basename(file);
   const digest = createHash("sha256")
     .update(await readFile(file))
@@ -58,10 +64,13 @@ for (const file of await collect("work/release-artifacts")) {
   uploads.push(target);
   sums.push(`${digest}  ${name}`);
 }
-for (const platform of ["win32-x64", "darwin-arm64", "darwin-x64"]) {
-  const expected = `lexicon-mcp-${tag.slice(1)}-${platform}.zip`;
+for (const expected of [
+  `lexicon-mcp-${tag.slice(1)}.tgz`,
+  "lexicon-mcp.tgz",
+  "INSTALL.md",
+]) {
   if (!uploads.some((file) => path.basename(file) === expected))
-    throw new Error(`Missing platform artifact ${expected}`);
+    throw new Error(`Missing Node package artifact ${expected}`);
 }
 await writeFile(
   "work/release-upload/SHA256SUMS",
@@ -88,7 +97,8 @@ const changes = execFileSync(
   ],
   { encoding: "utf8" },
 );
-const notes = `${type === "prerelease" ? "Prerelease build" : "Release"}. Source: ${sha}. Platform artifacts passed automated package smoke checks; consult docs/compatibility.md for live Lexicon and host verification evidence. macOS binaries are ad-hoc signed; Windows binaries are unsigned.\n\n## Changes\n\n${changes}`;
+const installCommand = `npx --yes https://github.com/DavidNiessen/lexicon-mcp/releases/download/${tag}/lexicon-mcp-${tag.slice(1)}.tgz install`;
+const notes = `${type === "prerelease" ? "Prerelease build" : "Release"}. Source: ${sha}. Requires Node.js 24.\n\n## Install\n\n\`\`\`sh\n${installCommand}\n\`\`\`\n\nSelect your agents in the installer, then restart them. Existing agent settings are preserved; dry-run and explicit agent selection are supported. This platform-neutral package replaces the companion plugin and native executables. MCP UI-capable clients can render library and change previews; text/JSON fallback remains available. See INSTALL.md and docs/compatibility.md for details and verification evidence.\n\n## Changes\n\n${changes}`;
 await writeFile("work/release-upload/notes.md", notes);
 execFileSync(
   "gh",

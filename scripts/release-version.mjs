@@ -107,11 +107,7 @@ export function selectReleaseVersion({
 }
 export async function stampVersion(version, cwd = process.cwd()) {
   const next = normalizeVersion(version);
-  for (const file of [
-    "package.json",
-    "packages/server/package.json",
-    "packages/companion/package.json",
-  ]) {
+  for (const file of ["package.json", "packages/server/package.json"]) {
     const path = join(cwd, file),
       data = JSON.parse(await readFile(path, "utf8"));
     data.version = next;

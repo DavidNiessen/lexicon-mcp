@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Replace native executable downloads with one platform-neutral Node package runnable through npx.
+- Add a selected-agent installer with scoped configuration, dry runs, backups, and explicit replacement.
+- Remove the Lexicon companion plugin from source and release artifacts.
+- Add MCP UI previews with text/JSON fallbacks.
+- Keep automatic main-build prereleases and manually selected stable releases, with exact npx commands in release notes.
+
 ## 0.1.0 — initial private release candidate
 
 - Add the documented Lexicon Local API operation registry and command catalog.

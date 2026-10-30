@@ -37,6 +37,12 @@ Playlist copying uses two reviewed plans: create the destination, then populate 
 
 Common command shortcuts are `lexicon_player_load`, `lexicon_player_play`, `lexicon_player_pause`, `lexicon_player_seek`, and `lexicon_analyze_tracks`. They use the same validation and review policy as `lexicon_run_command`.
 
+## Visual previews
+
+MCP UI-capable hosts can display change-plan previews, library-health findings, and prepared-set results alongside tool responses. The UI is read-only and is designed for inspecting the exact proposal or report, including empty and partial-result states. It does not apply edits or grant approval. Ask the assistant to create or inspect a reviewed plan, and confirm in chat before using the separate apply tool.
+
+Hosts without MCP UI/MCP Apps support continue receiving text and structured JSON. Agent installation configures MCP access; it does not guarantee that agent's current version renders previews. Large results remain paginated, and previews identify bounded or truncated views rather than claiming to show the whole library.
+
 ## Review prompts
 
 Reusable prompts support library audits, metadata cleanup, and set preparation. A suitable first request is: “Audit my library and show a summary without making changes.” For edits: “Propose the exact changes, wait for my confirmation, then apply the approved plan.”

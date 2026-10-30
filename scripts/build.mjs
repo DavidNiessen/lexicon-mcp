@@ -10,6 +10,7 @@ await build({
   platform: "node",
   target: "node24",
   format: "cjs",
+  mainFields: ["module", "main"],
   banner: { js: "#!/usr/bin/env node" },
   external: [],
 });

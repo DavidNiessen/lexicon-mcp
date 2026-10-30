@@ -1,31 +1,31 @@
 # Compatibility and verification
 
-This project is a release candidate until required platform, host, and disposable-library checks have passed. The table records evidence rather than assuming compatibility from a version number.
+This project remains a release candidate until required host and disposable-library checks are recorded. The table distinguishes implemented support from live verification.
 
-| Target                             | Evidence/status                                                                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Lexicon Beta 1.11.113 on Windows   | Five read-only API smoke checks passed on 2026-10-30; live mutations remain unverified.                             |
-| Other Lexicon stable/beta releases | Not claimed without testing.                                                                                        |
-| Windows x64 executable             | Local SEA packaging, version launch, and isolated stdio MCP session passed on 2026-10-30.                           |
-| macOS arm64 executable             | Matching runner build and smoke check required.                                                                     |
-| macOS x64 executable               | Matching runner build and smoke check required.                                                                     |
-| Linux                              | Adapter/protocol development tests only; no Lexicon desktop compatibility claim.                                    |
-| Node package                       | Node.js 24 required.                                                                                                |
-| Companion plugin                   | Manifest and sandbox report tests provided; actual Lexicon GUI installation verification required.                  |
-| MCP hosts                          | SDK client tests establish protocol behavior. Record a real host's name/version before claiming host compatibility. |
+| Target                             | Evidence/status                                                                                                                             |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lexicon Beta 1.11.113 on Windows   | Five read-only API smoke checks passed on 2026-10-30; live mutations remain unverified.                                                     |
+| Other Lexicon stable/beta releases | Not claimed without testing.                                                                                                                |
+| Node distribution                  | Requires Node.js 24; one platform-neutral tarball runs the bundled program.                                                                 |
+| Windows/macOS/Linux                | Adapter, protocol, and installer tests run in the CI matrix. Linux is a development/test target, not a Lexicon desktop compatibility claim. |
+| Installer                          | Native configuration adapters are tested against isolated fixtures. Actual agent/version interoperability should be recorded separately.    |
+| MCP UI                             | Compatible hosts can render previews; host support varies. Text/JSON responses remain available.                                            |
+| MCP protocol                       | Current and legacy SDK client integration tests cover tool discovery/calls, resources, and prompts.                                         |
 
-The checked-in API snapshot is the contract used for capability coverage. The upstream API's generic version does not identify every application capability. Unsupported behavior is reported explicitly; mutations are not probed merely to discover support.
+The checked-in API specification is the capability contract. Its generic version does not identify all application capabilities. Unsupported commands are reported explicitly; library mutations are never probed just to discover support.
+
+## Package verification
+
+`pnpm package` runs the emitted tarball through npm exec with an isolated cache and project. Version/help and an installer project dry run must pass without creating agent configuration or runtime files. Cross-platform tests must preserve unrelated agent settings, reject malformed configurations, handle paths safely, and keep dry runs non-mutating.
+
+Visual preview checks cover escaped metadata, empty/error states, and fallback behavior. A selectable agent is not automatically claimed to render MCP UI.
 
 ## Safe live smoke test
 
-Local evidence recorded on 2026-10-30: the Windows x64 executable was packaged using Node 24.16.0 SEA injection and passed its version launch smoke test. The read-only probe passed for tracks, playlists, tags, player, and queue on the installed Lexicon Beta 1.11.113. No live mutation, macOS launch, or GUI plugin verification is implied by these checks.
+With Lexicon running, execute `node scripts/live-smoke.mjs`. It issues only GET requests for a single track, playlists, tags, playing state, and queue, and withholds library contents. It does not test writes or command dispatch.
 
-Packaging also launches the self-contained executable from an isolated temporary working directory with an empty PATH. It initializes a legacy-compatible MCP session, lists tools, and retrieves the analysis command schema without contacting Lexicon. GitHub-hosted CI execution is currently blocked by the account's Actions billing limit; workflow definitions are provided, but no successful hosted run is claimed.
-
-GitHub also rejected enabling branch protection on this private repository because the account needs GitHub Pro for that feature. Until available, maintain the documented PR and passing-check gate manually; do not merge this candidate while hosted verification is unavailable.
-
-With Lexicon running, execute `node scripts/live-smoke.mjs`. It issues only GET requests for a single track, playlists, tags, playing state, and queue. It reports reachability while withholding library contents. It does not test mutations, command dispatch, or claim broad live compatibility.
+The original read-only checks passed on 2026-10-30. Historical native-executable packaging evidence does not establish support for the current selected-agent installation path.
 
 ## Release acceptance record
 
-For a stable release, record the commit, CI run, executable checksums, exact OS/CPU and Lexicon version, host version, plugin installation result, and disposable-library mutation results. Include cue/grid preservation, playlist ordering, stale-plan rejection, partial failure, and restart/reconciliation scenarios. Existing personal libraries remain read-only for verification.
+Before a stable release, record the commit, CI run, package checksum, exact OS/Node/Lexicon and agent versions, installer result, preview rendering evidence, and disposable-library mutation results. Include cue/grid preservation, playlist ordering, stale-plan rejection, partial failure, and restart/reconciliation scenarios. Existing personal libraries remain read-only during verification.

@@ -1,33 +1,43 @@
 # Development and releases
 
-## Local loop
+## Local development
 
-Use Node.js 24 and the pnpm version pinned in the workspace. Install with `pnpm install --frozen-lockfile`. Run `pnpm check`, `pnpm test`, and `pnpm build`. `node scripts/check-companion.mjs` executes read-only report actions with synthetic sandbox globals.
+Use Node.js 24 and the pinned pnpm version:
 
-The source bundle is `packages/server/dist/cli.cjs`. `pnpm package` creates artifacts under `release/VERSION-PLATFORM-ARCH`. Intermediate files live in `work/package`. Both directories are excluded from Git.
+```sh
+pnpm install --frozen-lockfile
+pnpm check
+pnpm test
+pnpm build
+pnpm package
+```
 
-Use a disposable Lexicon library and a separate `LEXICON_DATA_DIR` for live write tests. Tests in CI must run without Lexicon, using synthetic HTTP fixtures and local clients. `node scripts/live-smoke.mjs` is the explicit read-only live probe.
+The bundled program is `packages/server/dist/cli.cjs`. Packaging produces `release/VERSION/lexicon-mcp-VERSION.tgz`, a constant-name `lexicon-mcp.tgz` alias, `INSTALL.md`, `SHA256SUMS`, a CycloneDX SBOM, and dependency notices. Intermediate files live in `work/package`. Both output directories are excluded from Git.
+
+Packaging smoke-tests the actual tarball through npm exec (the implementation used by npx). It checks version/help and a Cursor project dry run in isolated storage. A separate asynchronous HTTP-server check runs npx using the documented direct tarball URL form and confirms that the installer actually executes. Both checks verify that dry runs create no agent configuration or runtime files. The user's real agent settings and Lexicon library are never installation test targets.
 
 ## Git and review
 
-Use milestone branches and Conventional Commits. Each completed, tested step is committed and pushed immediately. Milestone PRs are merged only after CI passes, preserving their individual commits. Enable required checks and protect `main` where the private account's feature set supports that setting; otherwise maintainers enforce the same gate before merging.
+Use Conventional Commits and push each completed, tested step. Keep handwritten source and test files below 400 lines. New behavior needs focused tests and matching documentation.
 
-CI checks formatting, lint, types, tests, architecture/file size, companion scripts, common secret patterns, the package build, and high-severity production dependency advisories. A separate job builds each desktop artifact and launches it. Actions are pinned to verified commit SHAs and updated through Dependabot.
+## CI
 
-CodeQL is an optional manual workflow because private-repository availability depends on GitHub account features. Configure private vulnerability reporting, secret scanning, and dependency alerts when the repository plan permits them. Local credential-pattern checks remain available without those services.
+Verification runs on Linux, Windows, and macOS with Node.js 24. Checks cover formatting, lint, types, architecture/file sizes, dependency licenses, credential patterns, relevant Conventional Commits, tests, bundle builds, and dependency advisories. One Ubuntu job creates the platform-neutral package; it contains no operating-system runtime or native executable. Actions are pinned and tracked by Dependabot.
 
 ## Versions and publishing
 
-Every successful push build on `main` publishes a GitHub prerelease after verification and all three desktop package builds pass. Pull requests, feature branches, and failed builds publish no releases. Default builds are not cancelled by newer pushes; publication runs are serialized.
+Every successful push build on `main` publishes a GitHub prerelease after verification and package smoke checks. Pull requests, feature branches, and failed builds publish no releases. Main builds are not cancelled by newer pushes; publication is serialized.
 
-Run **Release** manually from `main` to choose `prerelease` (default) or `release`. The optional `tag` field accepts a version or v-prefixed tag. Leave it blank to derive the next stable version from Conventional Commits: breaking commits bump major, `feat` bumps minor, and other commits bump patch. The checked-in server version is the initial baseline when no stable tag exists. `node scripts/next-version.mjs` prints this stable baseline recommendation locally.
+Run **Release** from `main` to choose `prerelease` or `release`. The optional `tag` accepts a version or v-prefixed tag. A blank version derives its stable baseline from Conventional Commits: breaking commits bump major, `feat` bumps minor, and other commits bump patch. Before the first stable tag, the checked-in server version is the baseline. `node scripts/next-version.mjs` prints that recommendation.
 
-Prereleases append `-dev.RUN_ID.ATTEMPT` to that baseline, so each build and retry has a unique version. An explicit prerelease such as `v0.2.0-rc.1` is used exactly. Stable releases require a version without a prerelease suffix and become GitHub's latest release; prereleases never replace latest. Manual versions take precedence. Existing published tags/releases are not overwritten; retry with a new version if a prior publication already exists.
+Prereleases append `-dev.RUN_ID.ATTEMPT`, giving each build and retry a unique version. Explicit prerelease versions such as `v0.2.0-rc.1` are used exactly. Stable releases require a version without a prerelease suffix and become GitHub's latest release. Manual versions take precedence. Existing releases are not overwritten; use a new version to recover from an already-created publication.
 
-Preparation resolves one version and source SHA. Every platform checks out that exact SHA, stamps the same version into the workspace/server/companion manifests and CLI/MCP version module, validates, tests, builds, and packages it. Version stamping changes only build workspaces; the workflow never pushes version commits to `main`. Reproducing a release from its source tag requires running `scripts/stamp-release.mjs` with `RELEASE_TAG` set to the release tag before building.
+Preparation resolves one version and source SHA. The package job checks out that SHA, stamps workspace/server and CLI/MCP versions, validates, tests, builds, and packages it. Stamping changes only the build checkout. To reproduce a release, set `RELEASE_TAG` and run `node scripts/stamp-release.mjs` before building.
 
-Only after all platform builds pass does the publisher create the tag targeting the original source commit. It uploads assets to a temporary draft, then publishes it as the selected channel once uploads succeed. A failure can leave a draft for inspection but cannot expose partially uploaded assets as a completed release. Actions needs `contents: write` for this publishing job. Both public and private repositories are supported; GitHub repository visibility determines who can download their releases. npm registry publication remains disabled.
+After packaging succeeds, the publisher creates a tag targeting the original source commit, stages assets in a draft, then publishes the selected channel after uploads succeed. The release notes and `INSTALL.md` contain the exact working npx tarball URL. Failed uploads leave a draft for inspection rather than exposing incomplete published assets.
 
-Artifacts contain the exact bundled Node runtime license, dependency notices, and a CycloneDX build/runtime component inventory. The inventory includes build dependencies and is intentionally broader than the executable's runtime graph. Executable archives carry their own SBOM/notices; the draft uploader attaches deduplicated Node/plugin packages and platform archives.
+Both public and private repositories are supported according to GitHub visibility. The publishing job needs `contents: write`; downloading build artifacts needs `actions: read`. npm registry publishing is disabled and no npm account is required for GitHub tarball installation.
 
-macOS is ad-hoc signed and Windows is unsigned by default. Trusted code signing and macOS notarization require separate maintainer credentials and a hardened credential-backed job; these are not prerequisites for candidate packaging and are not represented as complete.
+## Dependency inventory
+
+Artifacts contain dependency notices and a CycloneDX inventory covering build and runtime components. Node.js is required on the user's machine and is not redistributed in the package. The dependency inventory is intentionally broader than the bundled program's runtime graph.
