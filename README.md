@@ -22,7 +22,9 @@ For published stable releases. The release workflow maintains this command separ
 
 <!-- install:release:start -->
 
-No stable release has been published yet. Use the prerelease below.
+```sh
+npx --yes https://github.com/DavidNiessen/lexicon-mcp/releases/download/v0.1.0/lexicon-mcp-0.1.0.tgz install
+```
 
 <!-- install:release:end -->
 
