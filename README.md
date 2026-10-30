@@ -30,7 +30,7 @@ This uses a GitHub release package directly and requires no npm login. The scope
 - Local stdio or authenticated loopback HTTP transport.
 - Visual previews for MCP UI-capable hosts, with text and structured JSON fallbacks.
 
-Individual low-impact writes can run directly. Bulk edits, deletions, file-reference changes, and destructive commands require a separate plan/apply flow. The assistant obtains your approval in chat; the server cannot independently prove that a human approved a conversation. The preview UI does not bypass these checks. See [changes and recovery](docs/changes.md).
+Individual low-impact writes can run directly. Bulk edits, deletions, file-reference changes, and destructive commands require a persisted preview and explicit UI approval. Use Apply/Cancel in an embedded MCP Apps preview or a native MCP review dialog. Chat replies cannot approve changes, and clients with neither UI capability remain blocked. Ask the assistant to call `lexicon_ui_status` when no preview appears. See [changes and recovery](docs/changes.md).
 
 This independent integration requires Lexicon DJ for live library access. The MCP host supplies the model. Live write verification belongs in a disposable library; see the [compatibility record](docs/compatibility.md).
 

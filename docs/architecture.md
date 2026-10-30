@@ -29,13 +29,13 @@ The installer adapts selected agents' native configuration formats, preserves un
 
 ## Preview boundary
 
-MCP UI resources provide visual context for proposed changes and reports. Text and structured JSON remain available to every client. Rendering is a host capability; the server does not claim that every selectable agent renders MCP Apps. Preview content must escape untrusted library metadata and respect host sandboxing. The UI never bypasses change-plan validation or client-mediated confirmation.
+MCP UI resources provide previews and explicit Apply/Cancel controls. The app-only confirmation tool requires a short-lived credential delivered only in UI-private metadata. MCP form elicitation supplies a native review dialog where embedded Apps are unavailable, using a signed continuation bound to the exact plan and request. No client capability means no protected apply; text/JSON remains available for inspection. The UI never bypasses stale-plan validation or read-only mode.
 
 ## Decisions
 
 - Use official Lexicon APIs; avoid database writes and unattended UI automation.
 - Keep stdio as the default and authenticate loopback HTTP.
-- Maintain client-mediated write confirmation.
+- Require explicit UI decisions for protected writes; do not accept chat confirmation as approval.
 - Ship a Node package with an interactive selected-agent installer.
 - Generate dependency license notices and a build/runtime component inventory.
 - Publish prereleases for successful main builds; manually select stable releases.

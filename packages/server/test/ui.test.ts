@@ -34,7 +34,7 @@ it("shows each changed field with its before value and expected relative value",
     "Clean title",
   ]);
   expect(preview.rows[1]?.slice(1)).toEqual(["rating", "3", "4"]);
-  expect(preview.note).toContain("cannot apply");
+  expect(preview.note).toContain("No chat confirmation");
 });
 
 it("makes whitespace-only edits visibly distinct with quoted values", () => {
@@ -139,7 +139,7 @@ it("bounds preview rows and cell text while preserving the full reported total",
   );
 });
 
-it("escapes script delimiters and ships CSP hashes without remote assets or write controls", () => {
+it("escapes script delimiters and ships CSP hashes without remote assets or inline event handlers", () => {
   const dangerous = '</script><img src=x onerror="alert(1)">';
   const preview = previewFor({
     ...plan,
@@ -162,6 +162,8 @@ it("escapes script delimiters and ships CSP hashes without remote assets or writ
   expect(html).not.toContain("'unsafe-inline'");
   expect(html).not.toMatch(/<script[^>]+src=|<link[^>]+href=|onclick=/);
   expect(html).not.toContain("lexicon_apply_change_plan");
+  expect(html).toContain('id="apply-changes"');
+  expect(html).toContain('id="cancel-changes"');
   for (const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) {
     expect(html).toContain(
       createHash("sha256").update(match[1]!).digest("base64"),

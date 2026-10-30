@@ -20,7 +20,7 @@ The interface is an embedded MCP Apps or MCP-UI resource. It shares tool results
 
 ## Capabilities and Constraints
 
-The preview is read-only: filtering and disclosure never apply mutations. Library changes continue through the existing chat-confirmed plan/apply tools. Library metadata is untrusted. No external scripts, fonts, images, or network calls are needed to render a preview.
+Filtering and disclosure are read-only. Apply and Cancel use an app-only tool with a short-lived grant bound to the displayed plan. No change runs until a user clicks a confirmation control. Text chat confirmation cannot apply a plan. Library metadata is untrusted. No external scripts, fonts, images, or network calls are needed to render a preview.
 
 ## Product Principles
 

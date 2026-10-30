@@ -50,7 +50,7 @@ Use the same agent and scope selection with `uninstall` to remove registrations,
 
 ## MCP UI previews
 
-Compatible hosts can render visual change-plan, health-report, and prepared-set previews. Other hosts receive text/JSON results. Rendering depends on the host's MCP UI/MCP Apps support; installation does not add rendering support to a host. Previews never bypass the plan/apply flow or confirmation in chat.
+Compatible hosts can render visual change-plan, health-report, and prepared-set previews. Pending plans have Apply/Cancel controls. Clients with MCP form elicitation can use a native review dialog instead. Installation does not add an embedded renderer to a host. Ask the assistant to call `lexicon_ui_status` to check the connected client's capabilities. Clients with neither UI path can inspect text/JSON reports, but cannot apply protected changes. Chat replies do not approve a plan.
 
 ## Manual configuration and development
 
@@ -88,18 +88,18 @@ The companion plugin and native executable downloads have been removed. If you p
 
 ## Troubleshooting
 
-| Symptom                     | Action                                                                                   |
-| --------------------------- | ---------------------------------------------------------------------------------------- |
-| `npx` is not found          | Install Node.js 24, reopen the terminal, and check `node --version` and `npx --version`. |
-| Download returns 404        | Copy the exact release command; replace both `VERSION` placeholders.                     |
-| Scoped package returns 404  | Use the GitHub tarball command; the package name is not currently published to npm.      |
-| Conflicting registration    | Preview and use `--force` if replacement is intended.                                    |
-| Invalid agent configuration | Repair the file; malformed configuration is never overwritten.                           |
-| Connection refused          | Start Lexicon, enable its API, and run `doctor`.                                         |
-| Agent cannot find Node      | Rerun installation after Node path changes, then restart the agent.                      |
-| Preview is text only        | The host may not support MCP UI/MCP Apps; text/JSON remains available.                   |
-| HTTP unauthorized           | Match server and client bearer tokens.                                                   |
-| Stale plan                  | Inspect changed data and create a fresh preview.                                         |
-| Mutation timed out          | Inspect current data and saved outcomes before retrying.                                 |
+| Symptom                     | Action                                                                                                                                                 |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npx` is not found          | Install Node.js 24, reopen the terminal, and check `node --version` and `npx --version`.                                                               |
+| Download returns 404        | Copy the exact release command; replace both `VERSION` placeholders.                                                                                   |
+| Scoped package returns 404  | Use the GitHub tarball command; the package name is not currently published to npm.                                                                    |
+| Conflicting registration    | Preview and use `--force` if replacement is intended.                                                                                                  |
+| Invalid agent configuration | Repair the file; malformed configuration is never overwritten.                                                                                         |
+| Connection refused          | Start Lexicon, enable its API, and run `doctor`.                                                                                                       |
+| Agent cannot find Node      | Rerun installation after Node path changes, then restart the agent.                                                                                    |
+| Preview is text only        | Call `lexicon_ui_status`. Use the native MCP review dialog if supported; otherwise reconnect with a UI-capable client. Protected changes stay blocked. |
+| HTTP unauthorized           | Match server and client bearer tokens.                                                                                                                 |
+| Stale plan                  | Inspect changed data and create a fresh preview.                                                                                                       |
+| Mutation timed out          | Inspect current data and saved outcomes before retrying.                                                                                               |
 
 Redact private paths, titles, identifiers, and tokens in bug reports. Include versions and a synthetic reproduction.

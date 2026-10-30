@@ -16,6 +16,7 @@ import { ChangePlans, type Operation } from "./changes.js";
 import { Store } from "./storage.js";
 import type { Config } from "./config.js";
 import { preserveImportedData } from "./lexicon/preservation.js";
+import { ApprovalManager, type UiConfirmation } from "./approvals.js";
 
 export class Runtime {
   readonly client: LexiconClient;
@@ -23,6 +24,7 @@ export class Runtime {
   readonly plans: ChangePlans;
   readonly workflows: WorkflowService;
   readonly jobs: JobManager;
+  readonly approvals: ApprovalManager;
   constructor(readonly config: Config) {
     this.client = new LexiconClient({ baseUrl: config.baseUrl });
     this.store = new Store(join(config.dataDir, "changes"));
@@ -37,10 +39,18 @@ export class Runtime {
     );
     this.workflows = new WorkflowService(this.client);
     this.jobs = new JobManager(join(config.dataDir, "jobs"));
+    this.approvals = new ApprovalManager(
+      new Store(join(config.dataDir, "ui-approvals")),
+      this.plans,
+    );
   }
   async initialize() {
     await this.store.initialize();
     await this.jobs.initialize();
+    await this.approvals.initialize();
+  }
+  confirmFromUi(input: UiConfirmation) {
+    return this.approvals.confirm(input);
   }
   operation(name: string) {
     const op = operations.find((o) => o.name === name);
@@ -213,8 +223,13 @@ export class Runtime {
     if (name === "lexicon_plan_changes")
       return this.plans.create(await this.expandSelections(input.operations));
     if (name === "lexicon_get_change_plan") return this.plans.get(input.id);
-    if (name === "lexicon_apply_change_plan")
-      return this.plans.apply(input.id, input.hash);
+    if (
+      name === "lexicon_apply_change_plan" ||
+      name === "lexicon_confirm_change_plan"
+    )
+      throw new Error(
+        "Changes require Apply in the preview UI. Text confirmation cannot apply a plan.",
+      );
     if (name === "lexicon_cancel_change_plan")
       return this.plans.cancel(input.id);
     if (name === "lexicon_start_job")
@@ -249,7 +264,7 @@ export class Runtime {
         reviewRequired: true,
         plan: await this.plans.create(await this.expandSelections([op])),
         instruction:
-          "Show the preview and obtain user confirmation before calling lexicon_apply_change_plan with this plan ID and hash.",
+          "Display the preview UI. The user must choose Apply or Cancel there; do not ask for text confirmation or apply through chat.",
       };
     return this.store.exclusive(async () => {
       const result = await this.execute(await this.prepare(op));
@@ -291,12 +306,6 @@ export const managementTools = [
     name: "lexicon_get_change_plan",
     description: "Read an existing preview and per-operation outcomes.",
     inputSchema: z.object({ id }),
-  },
-  {
-    name: "lexicon_apply_change_plan",
-    description:
-      "Apply a reviewed plan only after user confirmation. Client mediates approval.",
-    inputSchema: z.object({ id, hash: z.string().length(64) }),
   },
   {
     name: "lexicon_cancel_change_plan",

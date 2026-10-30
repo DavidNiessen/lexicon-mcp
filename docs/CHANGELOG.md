@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — UI approvals
+
+- Replace chat confirmation and the model-callable apply tool with explicit UI approvals.
+- Add Apply/Cancel controls, expiring UI-private credentials, and a versioned preview resource.
+- Add native MCP review dialogs for clients without embedded Apps and capability diagnostics.
+- Reject protected changes when UI approval is unavailable, invalid, expired, or stale.
+
 ## Unreleased
 
 - Replace native executable downloads with one platform-neutral Node package runnable through npx.

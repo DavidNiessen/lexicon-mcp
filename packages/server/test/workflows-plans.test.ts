@@ -33,7 +33,7 @@ async function fixture() {
   return { directory, simulator, runtime };
 }
 
-it("applies a reviewed reorder against the stateful API and preserves duplicate occurrences", async () => {
+it("applies a UI-confirmed reorder against the stateful API and preserves duplicate occurrences", async () => {
   const { simulator, runtime } = await fixture();
   const proposal = (await runtime.workflows.run("lexicon_playlist_workflow", {
     action: "reorder",
@@ -42,13 +42,14 @@ it("applies a reviewed reorder against the stateful API and preserves duplicate 
   })) as { operations: { tool: string; input: Record<string, unknown> }[] };
   const plan = await runtime.plans.create(proposal.operations);
   expect(simulator.state.playlists.get(7)!.trackIds).toEqual([1, 2, 1]);
-  const result = await runtime.plans.apply(plan.id, plan.hash);
+  const grant = await runtime.approvals.issue(plan.id, plan.hash);
+  const result = await runtime.confirmFromUi({ ...grant, decision: "apply" });
   expect(result.status).toBe("completed");
   expect(simulator.state.playlists.get(7)!.trackIds).toEqual([2, 1, 1]);
   const writes = simulator.requests.filter(
     (request) => request.method !== "GET",
   ).length;
-  await runtime.plans.apply(plan.id, plan.hash);
+  await runtime.confirmFromUi({ ...grant, decision: "apply" });
   expect(
     simulator.requests.filter((request) => request.method !== "GET"),
   ).toHaveLength(writes);
@@ -69,15 +70,25 @@ it("records an interrupted reorder and recovers only through a fresh reviewed pl
     method: "PATCH",
     path: "/playlist-tracks",
   });
-  const failed = await runtime.plans.apply(plan.id, plan.hash);
+  const grant = await runtime.approvals.issue(plan.id, plan.hash);
+  const failed = await runtime.confirmFromUi({ ...grant, decision: "apply" });
   expect(failed.status).toBe("failed");
   expect(failed.outcomes.map((outcome) => outcome.status)).toEqual([
     "completed",
     "failed-or-unknown",
   ]);
   expect(simulator.state.playlists.get(7)!.trackIds).toEqual([]);
-  await expect(runtime.plans.apply(plan.id, plan.hash)).rejects.toThrow(
-    "reconciliation",
+  const attempts = simulator.requests.filter(
+    (request) => request.method !== "GET",
+  ).length;
+  expect(
+    (await runtime.confirmFromUi({ ...grant, decision: "apply" })).status,
+  ).toBe("failed");
+  expect(
+    simulator.requests.filter((request) => request.method !== "GET"),
+  ).toHaveLength(attempts);
+  await expect(runtime.approvals.issue(plan.id, plan.hash)).rejects.toThrow(
+    "pending",
   );
   const original = (failed.before[0] as { playlist: { trackIds: number[] } })
     .playlist.trackIds;
@@ -87,9 +98,14 @@ it("records an interrupted reorder and recovers only through a fresh reviewed pl
       input: { id: 7, trackIds: original, index: 0 },
     },
   ]);
-  expect((await runtime.plans.apply(recovery.id, recovery.hash)).status).toBe(
-    "completed",
+  const recoveryGrant = await runtime.approvals.issue(
+    recovery.id,
+    recovery.hash,
   );
+  expect(
+    (await runtime.confirmFromUi({ ...recoveryGrant, decision: "apply" }))
+      .status,
+  ).toBe("completed");
   expect(simulator.state.playlists.get(7)!.trackIds).toEqual([1, 2, 1]);
 });
 
@@ -107,7 +123,14 @@ it("copies current tracks through two explicit reviewed plans and reports the in
   };
   expect(proposal.note).toContain("incomplete");
   const creation = await runtime.plans.create(proposal.operations);
-  const created = await runtime.plans.apply(creation.id, creation.hash);
+  const creationGrant = await runtime.approvals.issue(
+    creation.id,
+    creation.hash,
+  );
+  const created = await runtime.confirmFromUi({
+    ...creationGrant,
+    decision: "apply",
+  });
   const newId = (created.outcomes[0]!.result as { id: number }).id;
   expect(simulator.state.playlists.get(newId)!.trackIds).toEqual([]);
   const population = await runtime.plans.create([
@@ -116,7 +139,11 @@ it("copies current tracks through two explicit reviewed plans and reports the in
       input: { id: newId, trackIds: proposal.followUp.trackIds },
     },
   ]);
-  await runtime.plans.apply(population.id, population.hash);
+  const populationGrant = await runtime.approvals.issue(
+    population.id,
+    population.hash,
+  );
+  await runtime.confirmFromUi({ ...populationGrant, decision: "apply" });
   expect(simulator.state.playlists.get(newId)).toMatchObject({
     name: "Copy",
     trackIds: [1, 2, 1],

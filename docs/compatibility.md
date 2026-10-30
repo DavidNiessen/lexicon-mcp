@@ -20,6 +20,8 @@ The checked-in API specification is the capability contract. Its generic version
 
 Visual preview checks cover escaped metadata, empty/error states, and fallback behavior. A selectable agent is not automatically claimed to render MCP UI.
 
+For Codex desktop, `lexicon_ui_status` reports the capabilities advertised by the current connection. Embedded Apps use Apply/Cancel buttons; clients advertising form elicitation use a native MCP approval dialog through `lexicon_review_change_plan`. Neither capability means changes remain blocked. SDK integration tests cover both approval paths, but actual Codex desktop rendering and dialogs still need host verification. Chat replies cannot apply a plan.
+
 ## Safe live smoke test
 
 With Lexicon running, execute `node scripts/live-smoke.mjs`. It issues only GET requests for a single track, playlists, tags, playing state, and queue, and withholds library contents. It does not test writes or command dispatch.

@@ -4,9 +4,11 @@
 
 Individual low-impact edits can execute directly. Bulk edits, deletions, file-reference changes, and destructive commands require an immutable persisted plan. Read-only mode can prohibit all writes.
 
-`lexicon_plan_changes` validates proposed operations and captures exact targets and before-values. `lexicon_get_change_plan` returns the preview. The assistant presents it, gets confirmation in chat, and then calls `lexicon_apply_change_plan` with the plan ID and content hash. `lexicon_cancel_change_plan` cancels an unapplied plan.
+`lexicon_plan_changes` validates proposed operations and captures exact targets and before-values. `lexicon_get_change_plan` returns the preview. Approve with **Apply** or reject with **Cancel** in the embedded MCP Apps preview. Clients advertising MCP form elicitation can instead open a native review dialog using `lexicon_review_change_plan`. These are UI decisions: a message such as “yes” in chat cannot apply a plan. `lexicon_cancel_change_plan` can abandon an unapplied plan without writing to the library.
 
-The server cannot prove that a human approved a conversation. These tools prevent accidental implicit bulk execution and stale changes; use a trusted MCP client for user confirmation. Tool annotations are descriptive, not an authorization boundary.
+The legacy `lexicon_apply_change_plan` tool is no longer advertised and its runtime route rejects calls. The embedded UI uses the app-only `lexicon_confirm_change_plan` tool with an expiring credential bound to the exact plan and hash. Credentials appear only in UI-private tool metadata, never in model-visible content or the initial HTML. Native dialogs use a signed continuation and require an accepted, checked approval field. Invalid, expired, stale, cancelled, or reused requests cannot replay writes. A trusted host mediates the UI; tool visibility metadata alone is not authentication.
+
+Use `lexicon_ui_status` to inspect the connected client's advertised capabilities. Embedded MCP Apps and native MCP forms are detected independently. When neither is available, or the server is read-only, applying is blocked. Text/JSON reports remain available, but there is no text-confirmation fallback.
 
 Selections are resolved to explicit IDs while planning. Changing the selection later must not change the plan's targets. If relevant source data changes before application, create a new plan and review the updated preview.
 

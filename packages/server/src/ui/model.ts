@@ -10,6 +10,7 @@ export type Preview = {
   facts: [string, string][];
   total: number;
   note: string;
+  plan?: { id: string; hash: string; status: string };
 };
 
 export function display(value: unknown): string {
@@ -42,7 +43,7 @@ function base(title: string, description: string): Preview {
 function planPreview(data: Record<string, any>): Preview {
   const preview = base(
     "Review library changes",
-    "Compare the proposed values before confirming changes in chat.",
+    "Compare the proposed values, then choose Apply changes or Cancel below.",
   );
   preview.status = display(data.status ?? "Proposal");
   if (data.status && data.status !== "pending")
@@ -51,6 +52,12 @@ function planPreview(data: Record<string, any>): Preview {
   preview.columns = ["Track / target", "Field", "Before", "After"];
   preview.facts = [["Operations", display(data.operations.length)]];
   if (data.id) preview.facts.push(["Plan", display(data.id)]);
+  if (typeof data.id === "string" && typeof data.hash === "string")
+    preview.plan = {
+      id: data.id,
+      hash: data.hash,
+      status: String(data.status ?? "pending"),
+    };
   let total = 0;
   for (let index = 0; index < data.operations.length; index++) {
     const op = object(data.operations[index]);
@@ -98,8 +105,10 @@ function planPreview(data: Record<string, any>): Preview {
   }
   preview.total = total;
   preview.note = data.id
-    ? "This preview cannot apply changes. Confirm the plan in chat; the assistant must use the plan ID and hash."
+    ? "Approve or cancel this exact plan in the confirmation controls. No chat confirmation is needed."
     : "Proposal only. Ask the assistant to create a change plan to capture and review the before values.";
+  if (data.status && data.status !== "pending")
+    preview.note = `Plan ${data.status}. This approval cannot apply further changes. Inspect the outcomes before making another plan.`;
   if (data.outcomes?.length)
     preview.note += ` Recorded outcomes: ${data.outcomes.length}. Inspect the plan result for individual failures.`;
   return preview;

@@ -39,10 +39,10 @@ Common command shortcuts are `lexicon_player_load`, `lexicon_player_play`, `lexi
 
 ## Visual previews
 
-MCP UI-capable hosts can display change-plan previews, library-health findings, and prepared-set results alongside tool responses. The UI is read-only and is designed for inspecting the exact proposal or report, including empty and partial-result states. It does not apply edits or grant approval. Ask the assistant to create or inspect a reviewed plan, and confirm in chat before using the separate apply tool.
+MCP UI-capable hosts display change-plan previews, library-health findings, and prepared-set results alongside tool responses. Filtering and disclosure are read-only; a pending plan's Apply/Cancel buttons submit an explicit decision through an app-only confirmation tool. The exact plan ID/hash and a UI-private, expiring credential are required. The widget cannot silently approve itself on load.
 
-Hosts without MCP UI/MCP Apps support continue receiving text and structured JSON. Agent installation configures MCP access; it does not guarantee that agent's current version renders previews. Large results remain paginated, and previews identify bounded or truncated views rather than claiming to show the whole library.
+Hosts without embedded MCP Apps support may advertise native MCP forms. For these clients the assistant calls `lexicon_review_change_plan` to open a native dialog containing the exact plan summary and an explicit approval checkbox. `lexicon_ui_status` reports the selected path. Hosts with neither capability retain text/JSON inspection but cannot apply protected changes. Agent installation configures MCP access; it cannot supply a missing renderer. Large results remain paginated, and bounded previews identify omitted rows.
 
 ## Review prompts
 
-Reusable prompts support library audits, metadata cleanup, and set preparation. A suitable first request is: “Audit my library and show a summary without making changes.” For edits: “Propose the exact changes, wait for my confirmation, then apply the approved plan.”
+Reusable prompts support library audits, metadata cleanup, and set preparation. A suitable first request is: “Audit my library and show a summary without making changes.” For edits: “Prepare the exact changes and open the approval UI.” No additional chat confirmation is required.
