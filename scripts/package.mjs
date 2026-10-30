@@ -55,7 +55,15 @@ function zip(files) {
 const pluginDir = path.join(root, "packages/companion/plugin");
 const pluginFiles = {};
 for (const name of await readdir(pluginDir))
-  pluginFiles[name] = await readFile(path.join(pluginDir, name));
+  pluginFiles[name] = strToU8(
+    (await readFile(path.join(pluginDir, name), "utf8")).replaceAll(
+      "\r\n",
+      "\n",
+    ),
+  );
+pluginFiles["LICENSE"] = strToU8(
+  (await readFile(path.join(root, "LICENSE"), "utf8")).replaceAll("\r\n", "\n"),
+);
 const companionZip = zip(pluginFiles);
 const archive = unzipSync(companionZip);
 const pluginConfig = JSON.parse(
@@ -124,6 +132,19 @@ const notices = [
   "Lexicon MCP — MIT",
   await readFile(path.join(root, "LICENSE"), "utf8"),
 ];
+// SEA archives redistribute Node itself, including its bundled third-party components.
+const nodeLicenseResponse = await fetch(
+  `https://raw.githubusercontent.com/nodejs/node/${process.version}/LICENSE`,
+  { signal: AbortSignal.timeout(15000) },
+);
+if (!nodeLicenseResponse.ok)
+  throw new Error(
+    "Cannot retrieve the license notices for the bundled Node runtime.",
+  );
+notices.push(
+  `Node.js ${process.version} runtime and bundled components`,
+  await nodeLicenseResponse.text(),
+);
 const components = [
   {
     type: "application",
@@ -265,6 +286,10 @@ if (!["win32-x64", "darwin-arm64", "darwin-x64"].includes(platform)) {
   const versionOutput = run(executable, ["--version"]);
   if (!versionOutput.includes(manifest.version))
     throw new Error("Packaged executable version smoke check failed.");
+  run(process.execPath, [
+    path.join(root, "scripts/check-executable.mjs"),
+    executable,
+  ]);
   const files = {
     [path.basename(executable)]: [
       await readFile(executable),

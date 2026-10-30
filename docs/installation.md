@@ -41,7 +41,7 @@ Configure a Streamable HTTP client for `http://127.0.0.1:48625/mcp` with `Author
 
 ## Node package
 
-Node.js 24 is required for the package distribution. Install the release tarball with `npm install --global ./davidniessen-lexicon-mcp-0.1.0.tgz`, then use `lexicon-mcp` as the host command. The tarball bundles runtime dependencies. The package is not published to the public npm registry by the private release workflow.
+Node.js 24 is required for the package distribution. Install the release tarball with `npm install --global ./davidniessen-lexicon-mcp-0.1.0-win32-x64.tgz` (substitute the downloaded filename), then use `lexicon-mcp` as the host command. The tarball bundles runtime dependencies. The package is not published to the public npm registry by the private release workflow.
 
 For development, use the pinned pnpm version and `pnpm install --frozen-lockfile`, then `pnpm build`. Configure the host to launch `node` with an absolute path to `packages/server/dist/cli.cjs` followed by `serve --transport stdio`.
 

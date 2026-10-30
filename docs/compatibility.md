@@ -4,9 +4,9 @@ This project is a release candidate until required platform, host, and disposabl
 
 | Target                             | Evidence/status                                                                                                     |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Lexicon Beta 1.11.113 on Windows   | Local API connectivity observed during planning. Implementation smoke-test evidence must be recorded separately.    |
+| Lexicon Beta 1.11.113 on Windows   | Five read-only API smoke checks passed on 2026-10-30; live mutations remain unverified.                             |
 | Other Lexicon stable/beta releases | Not claimed without testing.                                                                                        |
-| Windows x64 executable             | Packaging workflow and launch smoke check provided; see CI results for executed evidence.                           |
+| Windows x64 executable             | Local SEA packaging, version launch, and isolated stdio MCP session passed on 2026-10-30.                           |
 | macOS arm64 executable             | Matching runner build and smoke check required.                                                                     |
 | macOS x64 executable               | Matching runner build and smoke check required.                                                                     |
 | Linux                              | Adapter/protocol development tests only; no Lexicon desktop compatibility claim.                                    |
@@ -17,6 +17,12 @@ This project is a release candidate until required platform, host, and disposabl
 The checked-in API snapshot is the contract used for capability coverage. The upstream API's generic version does not identify every application capability. Unsupported behavior is reported explicitly; mutations are not probed merely to discover support.
 
 ## Safe live smoke test
+
+Local evidence recorded on 2026-10-30: the Windows x64 executable was packaged using Node 24.16.0 SEA injection and passed its version launch smoke test. The read-only probe passed for tracks, playlists, tags, player, and queue on the installed Lexicon Beta 1.11.113. No live mutation, macOS launch, or GUI plugin verification is implied by these checks.
+
+Packaging also launches the self-contained executable from an isolated temporary working directory with an empty PATH. It initializes a legacy-compatible MCP session, lists tools, and retrieves the analysis command schema without contacting Lexicon. GitHub-hosted CI execution is currently blocked by the account's Actions billing limit; workflow definitions are provided, but no successful hosted run is claimed.
+
+GitHub also rejected enabling branch protection on this private repository because the account needs GitHub Pro for that feature. Until available, maintain the documented PR and passing-check gate manually; do not merge this candidate while hosted verification is unavailable.
 
 With Lexicon running, execute `node scripts/live-smoke.mjs`. It issues only GET requests for a single track, playlists, tags, playing state, and queue. It reports reachability while withholding library contents. It does not test mutations, command dispatch, or claim broad live compatibility.
 

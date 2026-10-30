@@ -33,6 +33,10 @@ Duplicate candidates are evidence for review, not an automatic deletion decision
 
 Reports may be exported to JSON or CSV only on explicit request and within the configured export directory. CSV export escapes spreadsheet formula prefixes. Reports can contain private library metadata.
 
+Playlist copying uses two reviewed plans: create the destination, then populate its returned ID. The intermediate playlist is empty. Copies of folders or smartlists materialize their current tracks into an ordinary playlist. JSON exports preserve the full report; CSV exports use its primary findings, candidates, tracks, operations, or memberships collection.
+
+Common command shortcuts are `lexicon_player_load`, `lexicon_player_play`, `lexicon_player_pause`, `lexicon_player_seek`, and `lexicon_analyze_tracks`. They use the same validation and review policy as `lexicon_run_command`.
+
 ## Review prompts
 
 Reusable prompts support library audits, metadata cleanup, and set preparation. A suitable first request is: “Audit my library and show a summary without making changes.” For edits: “Propose the exact changes, wait for my confirmation, then apply the approved plan.”
