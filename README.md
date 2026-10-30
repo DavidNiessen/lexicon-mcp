@@ -7,7 +7,7 @@ Let a local MCP assistant inspect and manage your Lexicon DJ library. The server
 ## Get started
 
 1. Start Lexicon and enable its Local API under **Settings → Integrations**.
-2. Obtain a release archive for Windows x64 or macOS arm64/x64 from this repository's private Releases page. Extract it and run `lexicon-mcp doctor` (`lexicon-mcp.exe doctor` on Windows).
+2. Obtain a release archive for Windows x64 or macOS arm64/x64 from this repository's Releases page. Extract it and run `lexicon-mcp doctor` (`lexicon-mcp.exe doctor` on Windows).
 3. Configure your MCP host to launch the executable with `serve --transport stdio`.
 4. Ask the assistant to inspect the library, then request a preview before applying bulk edits.
 
@@ -47,7 +47,7 @@ pnpm build
 pnpm package
 ```
 
-Packaging produces a local Node tarball, companion ZIP, native executable archive, checksums, SBOM, and third-party notices. Public npm publication and public release are disabled.
+Packaging produces a local Node tarball, companion ZIP, native executable archive, checksums, SBOM, and third-party notices. Successful main builds publish prereleases. The manual Release workflow offers prerelease or stable release publishing. npm registry publication remains disabled.
 
 ## Documentation
 

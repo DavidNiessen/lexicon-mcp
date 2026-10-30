@@ -1,79 +1,25 @@
 import { appendFile, readFile } from "node:fs/promises";
-import { execFileSync, spawnSync } from "node:child_process";
-import {
-  chooseVersion,
-  normalizeVersion,
-  releaseHistory,
-  stampVersion,
-} from "./release-version.mjs";
+import { execFileSync } from "node:child_process";
+import { releaseHistory, selectReleaseVersion } from "./release-version.mjs";
 
-const git = (args) => execFileSync("git", args, { encoding: "utf8" }).trim();
-const emit = async (tag) => {
-  if (process.env.GITHUB_OUTPUT)
-    await appendFile(process.env.GITHUB_OUTPUT, `tag=${tag}\n`);
-  console.log(`Prepared private release ${tag}`);
-};
 if (process.env.GITHUB_REF !== "refs/heads/main")
-  throw new Error("Dispatch releases from main.");
-if (
-  execFileSync(
-    "gh",
-    ["repo", "view", "--json", "isPrivate", "--jq", ".isPrivate"],
-    { encoding: "utf8" },
-  ).trim() !== "true"
-)
-  throw new Error("Releases require a private repository.");
-if (git(["status", "--porcelain"]))
-  throw new Error("Release preparation requires a clean checkout.");
-const manual = process.env.RELEASE_TAG?.trim() ?? "";
-const manifest = JSON.parse(
+  throw new Error("Publish releases from main.");
+const { version: current } = JSON.parse(
   await readFile("packages/server/package.json", "utf8"),
 );
-if (manual) {
-  const tag = `v${normalizeVersion(manual)}`;
-  if (
-    spawnSync("git", ["show-ref", "--verify", "--quiet", `refs/tags/${tag}`])
-      .status === 0
-  ) {
-    git(["checkout", "--detach", tag]);
-    execFileSync(process.execPath, ["scripts/check-release.mjs"], {
-      env: { ...process.env, RELEASE_TAG: tag },
-      stdio: "inherit",
-    });
-    await emit(tag);
-    process.exit(0);
-  }
-}
-const selection = chooseVersion({
-  current: manifest.version,
+const selected = selectReleaseVersion({
+  current,
   ...releaseHistory(),
-  manual,
+  manual: process.env.RELEASE_TAG ?? "",
+  type: process.env.RELEASE_TYPE ?? "prerelease",
+  runId: process.env.GITHUB_RUN_ID,
+  attempt: process.env.GITHUB_RUN_ATTEMPT,
 });
-const tag = `v${selection.next}`;
-if (
-  spawnSync("git", ["show-ref", "--verify", "--quiet", `refs/tags/${tag}`])
-    .status === 0
-)
-  throw new Error(`Tag ${tag} already exists; choose a different version.`);
-await stampVersion(selection.next);
-for (const script of ["check", "test", "build"])
-  execFileSync("pnpm", ["run", script], { stdio: "inherit" });
-git(["config", "user.name", "github-actions[bot]"]);
-git([
-  "config",
-  "user.email",
-  "41898282+github-actions[bot]@users.noreply.github.com",
-]);
-git([
-  "add",
-  "package.json",
-  "packages/server/package.json",
-  "packages/companion/package.json",
-  "packages/server/src/version.ts",
-]);
-if (git(["diff", "--cached", "--name-only"]))
-  git(["commit", "-m", `chore(release): prepare ${tag}`]);
-git(["tag", "-a", tag, "-m", `Lexicon MCP ${tag}`]);
-// Atomic push prevents a source-branch race from leaving an orphan release tag.
-git(["push", "--atomic", "origin", "HEAD:refs/heads/main", `refs/tags/${tag}`]);
-await emit(tag);
+const sha = execFileSync("git", ["rev-parse", "HEAD"], {
+  encoding: "utf8",
+}).trim();
+if (process.env.GITHUB_OUTPUT)
+  await appendFile(process.env.GITHUB_OUTPUT, `tag=v${selected}\nsha=${sha}\n`);
+console.log(
+  `Selected ${process.env.RELEASE_TYPE ?? "prerelease"}: v${selected} from ${sha}`,
+);

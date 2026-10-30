@@ -1,41 +1,52 @@
-name: Private candidate release
+name: Release
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Optional version or tag (e.g. 0.2.0 or v0.2.0-rc.1); blank selects from Conventional Commits
+        description: Optional version or tag; blank selects from Conventional Commits
         required: false
         type: string
+      release_type:
+        description: Release channel
+        required: true
+        type: choice
+        default: prerelease
+        options: [prerelease, release]
+  workflow_call:
+    inputs:
+      tag:
+        required: false
+        type: string
+        default: ""
+      release_type:
+        required: false
+        type: string
+        default: prerelease
 concurrency:
-  group: private-candidate-release
+  group: publish-release
   cancel-in-progress: false
 permissions:
   contents: read
 jobs:
   prepare:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     outputs:
       tag: ${{ steps.version.outputs.tag }}
+      sha: ${{ steps.version.outputs.sha }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: main
+          ref: ${{ github.sha }}
           fetch-depth: 0
-      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Select version, validate and tag source
+      - name: Select version for this build
         id: version
         run: node scripts/prepare-release.mjs
         env:
           RELEASE_TAG: ${{ inputs.tag }}
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
   build:
     needs: prepare
     strategy:
@@ -46,21 +57,24 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ needs.prepare.outputs.tag }}
+          ref: ${{ needs.prepare.outputs.sha }}
           fetch-depth: 0
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: pnpm
+      - run: node scripts/stamp-release.mjs
+        env:
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
       - run: node scripts/check-release.mjs
         env:
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
       - run: pnpm test
+      - run: node scripts/check-companion.mjs
       - run: pnpm build
       - run: pnpm package
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -68,7 +82,7 @@ jobs:
           name: release-${{ runner.os }}-${{ runner.arch }}
           path: release/
           retention-days: 30
-  draft:
+  publish:
     needs: [prepare, build]
     runs-on: ubuntu-latest
     permissions:
@@ -77,12 +91,17 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ needs.prepare.outputs.tag }}
+          ref: ${{ needs.prepare.outputs.sha }}
           fetch-depth: 0
-      - name: Collect artifacts and create private draft
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - name: Publish completed platform artifacts
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
         run: node scripts/draft-release.mjs

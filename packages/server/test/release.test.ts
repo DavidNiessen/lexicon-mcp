@@ -8,7 +8,12 @@ import {
   normalizeVersion,
   releaseHistory,
   stampVersion,
+  selectReleaseVersion,
 } from "../../../scripts/release-version.mjs";
+import {
+  releaseArguments,
+  publishArguments,
+} from "../../../scripts/release-policy.mjs";
 
 const folders: string[] = [];
 afterEach(async () => {
@@ -22,6 +27,70 @@ const choose = (subject: string, body = "") =>
     tags: ["v1.2.3"],
     commits: [{ subject, body }],
   }).next;
+it("gives each automatic build and rerun a unique prerelease version", () => {
+  const input = {
+    current: "0.1.0",
+    tags: ["v1.0.0"],
+    commits: [{ subject: "feat: add tools" }],
+    runId: "123",
+    attempt: "1",
+  };
+  expect(selectReleaseVersion(input)).toBe("1.1.0-dev.123.1");
+  expect(selectReleaseVersion({ ...input, attempt: "2" })).toBe(
+    "1.1.0-dev.123.2",
+  );
+  expect(selectReleaseVersion({ ...input, runId: "124" })).toBe(
+    "1.1.0-dev.124.1",
+  );
+  expect(selectReleaseVersion({ ...input, commits: [] })).toBe(
+    "1.0.1-dev.123.1",
+  );
+});
+it("supports manual prerelease and stable release selection", () => {
+  const input = {
+    current: "0.1.0",
+    commits: [{ subject: "feat: first release" }],
+    runId: "123",
+  };
+  expect(selectReleaseVersion({ ...input, type: "release" })).toBe("0.1.0");
+  expect(selectReleaseVersion({ ...input, manual: "v0.3.0-rc.1" })).toBe(
+    "0.3.0-rc.1",
+  );
+  expect(
+    selectReleaseVersion({ ...input, type: "release", manual: "0.3.0" }),
+  ).toBe("0.3.0");
+  expect(() =>
+    selectReleaseVersion({ ...input, type: "release", manual: "0.3.0-rc.1" }),
+  ).toThrow("stable release");
+  expect(() => selectReleaseVersion({ ...input, type: "invalid" })).toThrow(
+    "Choose",
+  );
+});
+it("stages assets before publishing and marks only stable releases as latest", () => {
+  const input = {
+    tag: "v0.2.0",
+    type: "release",
+    sha: "a".repeat(40),
+    notes: "notes.md",
+    uploads: ["artifact.zip"],
+  };
+  expect(releaseArguments(input)).toContain("--draft");
+  expect(releaseArguments(input)).toContain(input.sha);
+  expect(
+    releaseArguments({ ...input, tag: "v0.2.0-rc.1", type: "prerelease" }),
+  ).toContain("--prerelease");
+  expect(publishArguments(input.tag, "release")).toContain("--latest=true");
+  expect(publishArguments("v0.2.0-rc.1", "prerelease")).toContain(
+    "--latest=false",
+  );
+  expect(publishArguments(input.tag, "release")).toContain("--draft=false");
+  expect(() => releaseArguments({ ...input, uploads: [] })).toThrow(
+    "without artifacts",
+  );
+  expect(() => releaseArguments({ ...input, sha: "main" })).toThrow(
+    "commit SHA",
+  );
+});
 it("uses the checked-in version for an initial release", () => {
   expect(
     chooseVersion({

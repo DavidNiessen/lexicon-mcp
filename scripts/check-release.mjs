@@ -1,5 +1,4 @@
 import { readFile } from "node:fs/promises";
-import { execFileSync } from "node:child_process";
 import { normalizeVersion } from "./release-version.mjs";
 const { version } = JSON.parse(
   await readFile("packages/server/package.json", "utf8"),
@@ -16,11 +15,9 @@ if (
   !runtimeVersion.includes(`export const VERSION = ${JSON.stringify(version)};`)
 )
   throw new Error("Runtime version must match the package version.");
-const visibility = execFileSync(
-  "gh",
-  ["repo", "view", "--json", "isPrivate", "--jq", ".isPrivate"],
-  { encoding: "utf8" },
-).trim();
-if (visibility !== "true")
-  throw new Error("This release workflow only runs for a private repository.");
-console.log(`Validated private release ${tag}.`);
+const type = process.env.RELEASE_TYPE ?? "prerelease";
+if (!["prerelease", "release"].includes(type))
+  throw new Error("Invalid release type.");
+if (type === "release" && version.includes("-"))
+  throw new Error("Stable releases cannot have prerelease versions.");
+console.log(`Validated ${type} ${tag}.`);

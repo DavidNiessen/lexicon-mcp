@@ -29,4 +29,4 @@ Handwritten source and test files are limited to 400 lines. Upstream specificati
 - Use client-mediated confirmation, avoiding an extra review UI or permanent bridge daemon.
 - Keep the companion optional and read-only.
 - Bundle runtime dependencies and generate a complete build/runtime dependency inventory for release review.
-- Keep the remote repository, releases, and package distribution private until explicitly authorized otherwise.
+- Publish prereleases after successful main builds and support manually selected stable releases. Keep npm publication disabled.

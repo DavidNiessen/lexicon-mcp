@@ -79,6 +79,32 @@ export function releaseHistory(cwd = process.cwd()) {
   }
   return { tags, commits };
 }
+export function selectReleaseVersion({
+  type = "prerelease",
+  runId,
+  attempt = "1",
+  ...options
+}) {
+  if (!["prerelease", "release"].includes(type))
+    throw new Error("Choose prerelease or release.");
+  const chosen = chooseVersion({
+    ...options,
+    ...(type === "prerelease" && !options.commits?.length
+      ? { commits: [{ subject: "build: create prerelease" }] }
+      : {}),
+  }).next;
+  if (type === "release") {
+    if (chosen.includes("-"))
+      throw new Error(
+        "A stable release requires a version without a prerelease suffix.",
+      );
+    return chosen;
+  }
+  if (chosen.includes("-")) return chosen;
+  if (!/^[1-9]\d*$/.test(String(runId)) || !/^[1-9]\d*$/.test(String(attempt)))
+    throw new Error("Prerelease version requires a valid run ID and attempt.");
+  return `${chosen}-dev.${runId}.${attempt}`;
+}
 export async function stampVersion(version, cwd = process.cwd()) {
   const next = normalizeVersion(version);
   for (const file of [
