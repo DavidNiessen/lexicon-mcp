@@ -135,6 +135,11 @@ it("shows the exact plan scope and explicitly identifies truncated previews", ()
   expect(message).toContain("Schranz | Industrial");
   expect(message).toMatch(/Showing \d+ of 117 changed fields/);
   expect(message).toContain("all 117 operations in this exact plan");
+  expect(message).toContain("MCP approval form in your chat client");
+  expect(message).toContain(
+    "Leaving it unchecked, closing, or declining leaves the plan pending",
+  );
+  expect(message).not.toContain("unchecked to cancel");
 });
 
 it.each([

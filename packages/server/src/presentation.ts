@@ -18,7 +18,8 @@ export function planReview(
 ) {
   if (status !== "pending") return undefined;
   const inspecting = tool === "lexicon_get_change_plan";
-  const opening = tool === "lexicon_review_change_plan";
+  const native = tool === "lexicon_review_change_plan_native";
+  const opening = tool === "lexicon_review_change_plan" || native;
   const next =
     !dismissed &&
     !readOnly &&
@@ -31,18 +32,21 @@ export function planReview(
       "Approval was not granted. The plan is still pending; no changes were applied. Do not cancel it or reopen the dialog automatically. Wait for the user to request another review.";
   else if (readOnly)
     message = "The server is in read-only mode; applying changes is blocked.";
+  else if (native && !capabilities.form)
+    message =
+      "This client does not advertise native MCP form dialogs. The saved plan remains pending. Use a client with working widget actions or native MCP forms; do not ask for chat approval or claim a dialog is visible.";
   else if (inspecting)
     message =
-      "This is a data-only inspection. Preserve the existing preview. Only call lexicon_review_change_plan again if the user asks to reopen it.";
+      "This inspects saved plan data only and does not prove any approval UI is open. If the user reports disabled Apply/Cancel or an IPC failure, use the advertised native fallback tool when available. Otherwise preserve the current preview and do not reopen it automatically.";
   else if (next)
     message =
       "Call lexicon_review_change_plan once to display this saved plan's approval UI, then wait. Do not ask for a chat reply.";
   else if (capabilities.inline)
     message =
-      "Use Apply or Cancel in this preview. Wait for the user's UI action; do not call get/review again unless the user asks.";
+      "An MCP widget was requested in the chat client; its visibility and working buttons are not verified by this server. Wait for the user's UI action. If the user reports disabled controls or IPC failure, call lexicon_review_change_plan_native when advertised. Do not refer to a separate dialog inside Lexicon.";
   else if (capabilities.form)
     message =
-      "Wait for the native MCP approval dialog. Do not reopen it automatically.";
+      "A native MCP approval form was requested in the chat client, not inside Lexicon. Wait for the user to submit it. Do not claim it is visible unless the host/user confirms, and do not reopen it automatically.";
   else
     message =
       "This client has not advertised an MCP Apps renderer or form elicitation. Applying changes is blocked; reconnect with a UI-capable client.";
@@ -59,6 +63,15 @@ export function planReview(
       : next
         ? { nextTool: "lexicon_review_change_plan" }
         : {}),
+    ...(capabilities.inline && capabilities.form && !native && !readOnly
+      ? {
+          fallbackTool: "lexicon_review_change_plan_native",
+          fallbackWhen:
+            "User reports disabled widget controls or unavailable IPC forwarding.",
+        }
+      : {}),
+    approvalLocation: "MCP client UI, not a dialog in Lexicon DJ",
+    uiVisibility: "not-verified-by-server",
     message,
   };
 }

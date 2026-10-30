@@ -92,7 +92,7 @@ export function nativeReviewMessage(plan: Plan) {
     );
   lines.push(
     "",
-    "Check Apply these changes and submit this dialog to approve. Submit it unchecked to cancel this plan. Closing or declining the dialog leaves the plan pending. A message in chat does not approve this plan.",
+    "This is an MCP approval form in your chat client, not a dialog inside Lexicon DJ. Check Apply these changes and submit to approve. Leaving it unchecked, closing, or declining leaves the plan pending. A message in chat does not approve this plan.",
   );
   return lines.join("\n");
 }

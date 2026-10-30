@@ -15,7 +15,7 @@ export const previewClient = String.raw`
   const text = value => String(value ?? '—').slice(0, 401);
   const node = (tag, value) => { const item = document.createElement(tag); if (value !== undefined) item.textContent = text(value); return item; };
   const expires = value => typeof value === 'number' ? value : Date.parse(value);
-  const bridgeFailure = "Claude's widget tool-call bridge is unavailable (IPC unavailable). This preview cannot confirm the operation. Inspect the saved plan in Claude's Chat tab or another UI-capable client before trying again. This view will not retry automatically.";
+  const bridgeFailure = "Claude's widget tool-call bridge is unavailable (IPC unavailable). This preview cannot confirm the operation. Ask your assistant to open the saved plan with native MCP review if supported. Inspect the saved plan before trying again. This view will not retry automatically.";
   const own = (value, key) => value && Object.prototype.hasOwnProperty.call(value, key);
   const final = value => ['completed','cancelled','failed','interrupted'].includes(value?.plan?.status);
   function snapshot(value) {
@@ -73,7 +73,7 @@ export const previewClient = String.raw`
     else if (['failed','interrupted','applying'].includes(model?.plan?.status)) feedback.textContent = 'Inspect the recorded outcomes and reconcile this plan before making further changes.';
     else if (hostBridgeFailed) feedback.textContent = bridgeFailure;
     else if (!ready) feedback.textContent = 'This client has not connected the confirmation UI. Changes remain blocked.';
-    else if (!toolCallAvailable) feedback.textContent = 'This host can display previews but does not advertise MCP tool-call support. Approval controls are disabled. Open it in a client or surface that can forward widget tool calls.';
+    else if (!toolCallAvailable) feedback.textContent = 'This host can display previews but does not advertise MCP tool-call support. Ask your assistant to open the saved plan with a native MCP approval form if supported. The widget approval controls are disabled.';
     else if (!available()) feedback.textContent = 'No current approval is available. Reopen the plan preview to refresh it.';
     else feedback.textContent = 'Apply changes once to approve this exact preview. No chat confirmation is needed.';
   }

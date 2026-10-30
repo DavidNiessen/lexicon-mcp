@@ -12,6 +12,8 @@ Scrolling away, hiding the chat, remounting its iframe, or expiring a UI credent
 
 Use `lexicon_ui_status` to inspect the connected client's advertised capabilities. Embedded MCP Apps and native MCP forms are detected independently. When neither is available, or the server is read-only, applying is blocked. Text/JSON reports remain available, but there is no text-confirmation fallback.
 
+If a rendered widget cannot forward its buttons, call the advertised `lexicon_review_change_plan_native` tool to request a native MCP form for the same saved plan. This route uses the ordinary MCP connection and the same signed plan-bound approval checks; it never depends on the iframe bridge, exposes approval credentials to the model, or creates another widget. A client must advertise form elicitation, and only an accepted, checked field approves the write. Pending plan data is not evidence that any review UI is currently visible.
+
 Selections are resolved to explicit IDs while planning. Changing the selection later must not change the plan's targets. If relevant source data changes before application, create a new plan and review the updated preview.
 
 ## Outcomes and failure

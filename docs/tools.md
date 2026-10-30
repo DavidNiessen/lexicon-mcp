@@ -47,6 +47,8 @@ Health, duplicate, and prepared-set tools retain direct report previews. Proposa
 
 Hosts without embedded MCP Apps support may advertise native MCP forms. For these clients the assistant calls `lexicon_review_change_plan` to open a native dialog containing the exact plan summary and an explicit approval checkbox. `lexicon_ui_status` reports the selected path. Hosts with neither capability retain text/JSON inspection but cannot apply protected changes. Agent installation configures MCP access; it cannot supply a missing renderer. Large results remain paginated, and bounded previews identify omitted rows.
 
+When a widget's buttons are disabled or its bridge fails, `lexicon_review_change_plan_native` explicitly requests a native MCP approval form even if the client also advertises embedded Apps. Check `lexicon_ui_status.nativeReviewTool` first. This tool has no widget template, uses the existing saved plan, and requires the user to submit a checked approval field. The assistant cannot infer a visible dialog from pending status or direct the user to a dialog inside Lexicon DJ.
+
 ## Review prompts
 
 Reusable prompts support library audits, metadata cleanup, and set preparation. A suitable first request is: “Audit my library and show a summary without making changes.” For edits: “Prepare the exact changes and open the approval UI.” No additional chat confirmation is required.

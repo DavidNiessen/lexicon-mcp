@@ -107,7 +107,7 @@ Other MCP servers and saved library reports remain separate from registration. S
 | Existing registration conflicts       | Review a dry run and the [replacement instructions](docs/installation.md); use `--force` only when you intend to replace that registration. |
 | Preview is stale or a write times out | Inspect the saved plan and current data before proposing another change. Do not blindly retry.                                              |
 
-If a Claude widget shows **“IPC not available for MCP tool call”**, its host cannot forward the button action. This matches an [upstream Code-tab report](https://github.com/anthropics/claude-ai-mcp/issues/1181). Try Claude's Chat surface or another client with widget tool-call support, reconnect, and reopen the saved plan. Rendering a preview does not by itself prove the host supports its buttons.
+If a Claude widget has disabled buttons or shows **“IPC not available for MCP tool call”**, ask the assistant to check `lexicon_ui_status` and use `lexicon_review_change_plan_native` for the existing plan when `nativeReviewTool` is advertised. This opens a native MCP form in the chat client without using the widget's button bridge. No native form support means another UI-capable client is needed. The IPC error matches an [upstream Code-tab report](https://github.com/anthropics/claude-ai-mcp/issues/1181); rendering a preview does not prove its buttons work. Approval happens in the MCP client, not in a separate Lexicon application dialog.
 
 More: [installation and troubleshooting](docs/installation.md), including manual configuration, read-only mode, and authenticated loopback HTTP.
 

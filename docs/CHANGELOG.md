@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Native review fallback
+
+- Add `lexicon_review_change_plan_native` for a saved plan when embedded widget buttons cannot forward actions.
+- Advertise the native route only when form elicitation is available; do not render a second widget or expose approval credentials.
+- Clarify that approval happens in the MCP client and that pending plan data does not prove a dialog is visible.
+- Correct native form wording: unchecked or dismissed forms leave the plan pending.
+
 ## Unreleased — Onboarding and release commands
 
 - Add the supplied high-resolution preview screenshot and a step-by-step README for installation, first use, updates, and troubleshooting.
